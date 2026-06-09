@@ -3,39 +3,50 @@ from typing import Any
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
-from app.graph.state import WorkflowState
+from app.graph.state import AppState
 
 
-def _route_decision(state: WorkflowState) -> str:
-    """Conditional edge: direct flow after routing node."""
-    if state.error:
+def _route_decision(state: AppState) -> str:
+    """Conditional edge after the router node.
+
+    Routes to "research" or "support" on a clean run.
+    Falls through to END if errors were recorded (router failed).
+    """
+    if state.get("errors"):
         return END
-    return state.route or END
+    route = state.get("route")
+    return route if route in ("research", "support") else END
 
 
-def _approval_decision(state: WorkflowState) -> str:
-    """Conditional edge: proceed or halt after human approval."""
-    if state.approval_status == "approved":
+def _approval_decision(state: AppState) -> str:
+    """Conditional edge after the human-approval node.
+
+    "approved"  → proceed to final_response
+    "rejected"  → terminate (END)
+    "pending"   → loop back to human_approval (graph stays interrupted)
+    """
+    status = state.get("approval_status", "pending")
+    if status == "approved":
         return "final_response"
-    if state.approval_status == "rejected":
+    if status == "rejected":
         return END
     return "human_approval"
 
 
 def build_workflow() -> StateGraph:
     """Construct the LangGraph state machine (not yet compiled)."""
-    from app.graph.nodes.router import router_node
-    from app.graph.nodes.research import research_node
-    from app.graph.nodes.support import support_node
-    from app.graph.nodes.retriever import retriever_node
-    from app.graph.nodes.reranker import reranker_node
-    from app.graph.nodes.generator import generator_node
-    from app.graph.nodes.structured_output import structured_output_node
     from app.graph.nodes.checkpoint import checkpoint_node
-    from app.graph.nodes.human_approval import human_approval_node
     from app.graph.nodes.final_response import final_response_node
+    from app.graph.nodes.generator import generator_node
+    from app.graph.nodes.human_approval import human_approval_node
+    from app.graph.nodes.reranker import reranker_node
+    from app.graph.nodes.research import research_node
+    from app.graph.nodes.retriever import retriever_node
+    from app.graph.nodes.router import router_node
+    from app.graph.nodes.structured_output import structured_output_node
+    from app.graph.nodes.support import support_node
 
-    graph = StateGraph(WorkflowState)
+    graph = StateGraph(AppState)
 
     graph.add_node("router", router_node)
     graph.add_node("research", research_node)
@@ -72,6 +83,11 @@ def build_workflow() -> StateGraph:
 
 
 def compile_workflow(checkpointer: Any | None = None) -> CompiledStateGraph:
+    """Compile the graph with an optional PostgreSQL checkpoint backend.
+
+    interrupt_before=["human_approval"] causes LangGraph to persist state and
+    pause execution at that node, waiting for an external resume() call.
+    """
     graph = build_workflow()
     return graph.compile(
         checkpointer=checkpointer,

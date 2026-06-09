@@ -1,6 +1,17 @@
-from app.graph.state import WorkflowState
+from app.graph.state import AppState, RetrievedDocument
 
 
-async def retriever_node(state: WorkflowState) -> dict:
-    """Retrieve top-K chunks from the vector database."""
+async def retriever_node(state: AppState) -> dict:
+    """Query ChromaDB for the top-K most relevant document chunks.
+
+    Reads
+    -----
+    query : str
+
+    Writes
+    ------
+    retrieved_documents : list[RetrievedDocument]
+    current_node : str
+    errors : list  (appended on failure)
+    """
     raise NotImplementedError

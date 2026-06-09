@@ -1,6 +1,14 @@
-from app.graph.state import WorkflowState
+from app.graph.state import AppState, RouteDecision
 
 
-async def router_node(state: WorkflowState) -> dict:
-    """Determine user intent and route to research or support agent."""
+async def router_node(state: AppState) -> dict:
+    """Classify the user query and set the routing decision.
+
+    Writes
+    ------
+    route : RouteDecision
+        "research" or "support"
+    current_node : str
+    errors : list  (appended on failure)
+    """
     raise NotImplementedError
