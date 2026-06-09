@@ -38,6 +38,7 @@ from app.schemas.requests import ApprovalRequest, WorkflowRequest
 from app.schemas.responses import (
     ApprovalResponse,
     Citation,
+    ConfidenceScores,
     WorkflowResponse,
     WorkflowStatusResponse,
 )
@@ -179,6 +180,16 @@ async def get_workflow_result(
         for c in (final.get("citations") or [])
     ]
 
+    conf_data = final.get("confidence")
+    api_confidence: ConfidenceScores | None = None
+    if conf_data:
+        api_confidence = ConfidenceScores(
+            router=float(conf_data.get("router", 0.0)),
+            retrieval=float(conf_data.get("retrieval", 0.0)),
+            answer=float(conf_data.get("answer", 0.0)),
+            overall=float(conf_data.get("overall", 0.0)),
+        )
+
     return WorkflowResponse(
         session_id=final["session_id"],
         summary=final["summary"],
@@ -186,6 +197,7 @@ async def get_workflow_result(
         citations=api_citations,
         route=final["route"],
         approval_status=final["approval_status"],
+        confidence=api_confidence,
     )
 
 

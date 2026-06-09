@@ -73,6 +73,24 @@ class StructuredOutput(TypedDict):
     citations: list[Citation]
 
 
+# ── Confidence scores ─────────────────────────────────────────────────────────
+
+
+class ConfidenceScores(TypedDict):
+    """Confidence signals captured at each major stage of the workflow.
+
+    router      LLM self-reported probability that the routing decision is correct.
+    retrieval   Position-weighted mean of ChromaDB cosine-similarity scores.
+    answer      Mean CrossEncoder rerank score of the context used for generation.
+    overall     Weighted combination: router 20%, retrieval 30%, answer 50%.
+    """
+
+    router: float
+    retrieval: float
+    answer: float
+    overall: float
+
+
 # ── Final response ────────────────────────────────────────────────────────────
 
 
@@ -86,6 +104,7 @@ class FinalResponse(TypedDict):
     route: RouteDecision
     approval_status: Literal["approved"]  # only "approved" responses reach here
     created_at: str  # ISO-8601 UTC
+    confidence: NotRequired[ConfidenceScores | None]
 
 
 # ── Error record ──────────────────────────────────────────────────────────────
@@ -193,6 +212,11 @@ class AppState(TypedDict):
     # ── Accumulated across all nodes (reducer = list concatenation) ────────────
     errors: Annotated[list[WorkflowError], operator.add]
 
+    # ── Confidence scores (written by individual nodes) ────────────────────────
+    router_confidence: NotRequired[float | None]      # from RouterAgent
+    retrieval_confidence: NotRequired[float | None]   # aggregate similarity score
+    answer_confidence: NotRequired[float | None]      # mean rerank score of context
+
     # ── Workflow tracking ──────────────────────────────────────────────────────
     current_node: NotRequired[str | None]
     step_count: NotRequired[int]
@@ -230,4 +254,7 @@ def initial_state(session_id: str, query: str, metadata: dict[str, str] | None =
         current_node=None,
         step_count=0,
         metadata=metadata or {},
+        router_confidence=None,
+        retrieval_confidence=None,
+        answer_confidence=None,
     )

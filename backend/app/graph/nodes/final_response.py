@@ -1,7 +1,8 @@
 from datetime import UTC, datetime
 
 from app.core.logging import get_logger
-from app.graph.state import AppState, Citation, FinalResponse, make_error
+from app.graph.state import AppState, Citation, ConfidenceScores, FinalResponse, make_error
+from app.services.confidence import score_overall
 
 _logger = get_logger(__name__)
 
@@ -45,6 +46,16 @@ async def final_response_node(state: AppState) -> dict:
         for c in (so.get("citations") or [])
     ]
 
+    router_conf = state.get("router_confidence") or 0.0
+    retrieval_conf = state.get("retrieval_confidence") or 0.0
+    answer_conf = state.get("answer_confidence") or 0.0
+    confidence = ConfidenceScores(
+        router=router_conf,
+        retrieval=retrieval_conf,
+        answer=answer_conf,
+        overall=score_overall(router_conf, retrieval_conf, answer_conf),
+    )
+
     response = FinalResponse(
         session_id=state["session_id"],
         summary=so.get("summary", ""),
@@ -53,12 +64,14 @@ async def final_response_node(state: AppState) -> dict:
         route=state.get("route") or "research",
         approval_status="approved",
         created_at=datetime.now(UTC).isoformat(),
+        confidence=confidence,
     )
 
     _logger.info(
         "final_response_node_done",
         session_id=state["session_id"],
         citation_count=len(citations),
+        confidence_overall=confidence["overall"],
     )
     return {
         "final_response": response,

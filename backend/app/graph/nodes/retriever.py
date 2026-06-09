@@ -2,6 +2,7 @@ from app.core.exceptions import EmbeddingError, RetrievalError
 from app.core.logging import get_logger
 from app.graph.state import AppState, make_error
 from app.rag.retriever import RetrieverService
+from app.services.confidence import score_retrieval
 
 _logger = get_logger(__name__)
 
@@ -52,13 +53,16 @@ async def retriever_node(state: AppState) -> dict:
             "errors": [make_error(_NODE, f"Unexpected error: {exc}")],
         }
 
+    retrieval_conf = score_retrieval(docs)
     _logger.info(
         "retriever_node_done",
         session_id=state["session_id"],
         doc_count=len(docs),
+        retrieval_confidence=retrieval_conf,
     )
     return {
         "retrieved_documents": docs,
+        "retrieval_confidence": retrieval_conf,
         "current_node": _NODE,
         "step_count": step,
     }

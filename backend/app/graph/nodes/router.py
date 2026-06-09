@@ -59,6 +59,7 @@ async def router_node(state: AppState) -> dict:
     )
     return {
         "route": result.route,
+        "router_confidence": result.confidence,
         "current_node": _NODE,
         "step_count": step,
     }

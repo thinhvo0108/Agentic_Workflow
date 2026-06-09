@@ -3,6 +3,7 @@ import json
 from app.agents.research_agent import ResearchOutput
 from app.core.logging import get_logger
 from app.graph.state import AppState, Citation, StructuredOutput, make_error
+from app.services.confidence import score_answer
 
 _logger = get_logger(__name__)
 
@@ -68,13 +69,16 @@ async def structured_output_node(state: AppState) -> dict:
         ],
     )
 
+    answer_conf = score_answer(state.get("reranked_documents") or [])
     _logger.info(
         "structured_output_node_done",
         session_id=state["session_id"],
         citation_count=len(output["citations"]),
+        answer_confidence=answer_conf,
     )
     return {
         "structured_output": output,
+        "answer_confidence": answer_conf,
         "current_node": _NODE,
         "step_count": step,
     }
