@@ -1,15 +1,25 @@
-from app.graph.state import AppState
+from app.core.logging import get_logger
+from app.graph.state import AppState, make_error
+
+_logger = get_logger(__name__)
+
+_NODE = "research"
 
 
 async def research_node(state: AppState) -> dict:
-    """Prepare context for the research path.
+    """Mark the research execution path and advance the step counter.
 
-    Always triggers retrieval.  May enrich the query with domain context
-    before handing off to the retriever node.
+    The research path always proceeds to the retriever node so no
+    retrieval logic lives here.  Future iterations may enrich the query
+    with domain-specific context before passing control downstream.
 
     Writes
     ------
     current_node : str
-    errors : list  (appended on failure)
+    step_count   : incremented by 1
     """
-    raise NotImplementedError
+    _logger.info("research_node_start", session_id=state["session_id"])
+    return {
+        "current_node": _NODE,
+        "step_count": state.get("step_count", 0) + 1,
+    }
