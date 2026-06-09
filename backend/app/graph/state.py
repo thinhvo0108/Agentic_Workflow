@@ -12,7 +12,7 @@ State design rules
 """
 
 import operator
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Annotated, Literal, NotRequired, TypedDict
 
 
@@ -209,7 +209,7 @@ def make_error(node: str, message: str) -> WorkflowError:
     return WorkflowError(
         node=node,
         message=message,
-        timestamp=datetime.utcnow().isoformat() + "Z",
+        timestamp=datetime.now(UTC).isoformat(),
     )
 
 

@@ -1,14 +1,64 @@
-from app.graph.state import AppState, RouteDecision
+from app.agents.router import RouterAgent
+from app.core.exceptions import LLMError
+from app.core.logging import get_logger
+from app.graph.state import AppState, make_error
+
+_logger = get_logger(__name__)
+
+_NODE = "router"
 
 
 async def router_node(state: AppState) -> dict:
-    """Classify the user query and set the routing decision.
+    """Classify the user query and write the routing decision into state.
+
+    Returns a partial state update — LangGraph merges it with the existing
+    state, so only the keys listed below change.
 
     Writes
     ------
-    route : RouteDecision
-        "research" or "support"
-    current_node : str
-    errors : list  (appended on failure)
+    route         : "research" | "support"
+    current_node  : "router"
+    step_count    : incremented by 1
+    errors        : appended on failure (reducer concatenates)
     """
-    raise NotImplementedError
+    _logger.info("router_node_start", session_id=state["session_id"])
+
+    step = state.get("step_count", 0) + 1
+
+    try:
+        agent = RouterAgent()
+        result = await agent.classify(state["query"])
+    except LLMError as exc:
+        _logger.error(
+            "router_node_failed",
+            session_id=state["session_id"],
+            error=str(exc),
+        )
+        return {
+            "current_node": _NODE,
+            "step_count": step,
+            "errors": [make_error(_NODE, str(exc))],
+        }
+    except Exception as exc:
+        _logger.error(
+            "router_node_unexpected_error",
+            session_id=state["session_id"],
+            error=str(exc),
+        )
+        return {
+            "current_node": _NODE,
+            "step_count": step,
+            "errors": [make_error(_NODE, f"Unexpected error: {exc}")],
+        }
+
+    _logger.info(
+        "router_node_done",
+        session_id=state["session_id"],
+        route=result.route,
+        confidence=result.confidence,
+    )
+    return {
+        "route": result.route,
+        "current_node": _NODE,
+        "step_count": step,
+    }
