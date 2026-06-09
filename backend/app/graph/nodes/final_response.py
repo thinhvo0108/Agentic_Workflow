@@ -4,6 +4,8 @@ from app.core.logging import get_logger
 from app.graph.state import AppState, Citation, ConfidenceScores, FinalResponse, make_error
 from app.services.confidence import score_overall
 
+# GroundednessResult imported at usage for type narrowing only
+
 _logger = get_logger(__name__)
 
 _NODE = "final_response"
@@ -65,6 +67,7 @@ async def final_response_node(state: AppState) -> dict:
         approval_status="approved",
         created_at=datetime.now(UTC).isoformat(),
         confidence=confidence,
+        groundedness=state.get("groundedness"),
     )
 
     _logger.info(

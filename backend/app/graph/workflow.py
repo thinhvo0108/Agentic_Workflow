@@ -49,6 +49,7 @@ def build_workflow() -> StateGraph:
     from app.graph.nodes.checkpoint import checkpoint_node
     from app.graph.nodes.final_response import final_response_node
     from app.graph.nodes.generator import generator_node
+    from app.graph.nodes.groundedness import groundedness_node
     from app.graph.nodes.human_approval import human_approval_node
     from app.graph.nodes.reranker import reranker_node
     from app.graph.nodes.research import research_node
@@ -68,6 +69,7 @@ def build_workflow() -> StateGraph:
     graph.add_node("reranker",         observe_node("reranker",         reranker_node))
     graph.add_node("generator",        observe_node("generator",        generator_node))
     graph.add_node("structured_output",observe_node("structured_output",structured_output_node))
+    graph.add_node("groundedness",     observe_node("groundedness",     groundedness_node))
     graph.add_node("checkpoint",       observe_node("checkpoint",       checkpoint_node))
     graph.add_node("human_approval",   observe_node("human_approval",   human_approval_node))
     graph.add_node("final_response",   observe_node("final_response",   final_response_node))
@@ -83,7 +85,8 @@ def build_workflow() -> StateGraph:
     graph.add_edge("retriever", "reranker")
     graph.add_edge("reranker", "generator")
     graph.add_edge("generator", "structured_output")
-    graph.add_edge("structured_output", "checkpoint")
+    graph.add_edge("structured_output", "groundedness")
+    graph.add_edge("groundedness", "checkpoint")
     graph.add_edge("checkpoint", "human_approval")
     graph.add_conditional_edges(
         "human_approval",

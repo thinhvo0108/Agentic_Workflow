@@ -73,6 +73,31 @@ class StructuredOutput(TypedDict):
     citations: list[Citation]
 
 
+# ── Groundedness evaluation ───────────────────────────────────────────────────
+
+
+class EvaluatedClaim(TypedDict):
+    """A single factual claim from the generated answer, with a support verdict."""
+
+    claim: str
+    supported: bool
+    source_document_ids: list[str]
+    reasoning: str
+
+
+class GroundednessResult(TypedDict):
+    """Aggregated groundedness evaluation produced by the groundedness node.
+
+    groundedness_score  = len(supported_claims) / total_claims (0.0 when no claims).
+    evaluated_at        ISO-8601 UTC timestamp of when the evaluation ran.
+    """
+
+    groundedness_score: float
+    supported_claims: list[EvaluatedClaim]
+    unsupported_claims: list[EvaluatedClaim]
+    evaluated_at: str  # ISO-8601 UTC
+
+
 # ── Confidence scores ─────────────────────────────────────────────────────────
 
 
@@ -105,6 +130,7 @@ class FinalResponse(TypedDict):
     approval_status: Literal["approved"]  # only "approved" responses reach here
     created_at: str  # ISO-8601 UTC
     confidence: NotRequired[ConfidenceScores | None]
+    groundedness: NotRequired[GroundednessResult | None]
 
 
 # ── Error record ──────────────────────────────────────────────────────────────
@@ -217,6 +243,9 @@ class AppState(TypedDict):
     retrieval_confidence: NotRequired[float | None]   # aggregate similarity score
     answer_confidence: NotRequired[float | None]      # mean rerank score of context
 
+    # ── Groundedness evaluation (written by groundedness node) ─────────────────
+    groundedness: NotRequired[GroundednessResult | None]
+
     # ── Workflow tracking ──────────────────────────────────────────────────────
     current_node: NotRequired[str | None]
     step_count: NotRequired[int]
@@ -257,4 +286,5 @@ def initial_state(session_id: str, query: str, metadata: dict[str, str] | None =
         router_confidence=None,
         retrieval_confidence=None,
         answer_confidence=None,
+        groundedness=None,
     )

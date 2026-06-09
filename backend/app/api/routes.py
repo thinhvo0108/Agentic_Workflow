@@ -39,6 +39,8 @@ from app.schemas.responses import (
     ApprovalResponse,
     Citation,
     ConfidenceScores,
+    EvaluatedClaim,
+    GroundednessResult,
     WorkflowResponse,
     WorkflowStatusResponse,
 )
@@ -190,6 +192,32 @@ async def get_workflow_result(
             overall=float(conf_data.get("overall", 0.0)),
         )
 
+    gnd_data = final.get("groundedness")
+    api_groundedness: GroundednessResult | None = None
+    if gnd_data:
+        api_groundedness = GroundednessResult(
+            groundedness_score=float(gnd_data.get("groundedness_score", 0.0)),
+            supported_claims=[
+                EvaluatedClaim(
+                    claim=c["claim"],
+                    supported=c["supported"],
+                    source_document_ids=c.get("source_document_ids", []),
+                    reasoning=c["reasoning"],
+                )
+                for c in (gnd_data.get("supported_claims") or [])
+            ],
+            unsupported_claims=[
+                EvaluatedClaim(
+                    claim=c["claim"],
+                    supported=c["supported"],
+                    source_document_ids=c.get("source_document_ids", []),
+                    reasoning=c["reasoning"],
+                )
+                for c in (gnd_data.get("unsupported_claims") or [])
+            ],
+            evaluated_at=gnd_data.get("evaluated_at", ""),
+        )
+
     return WorkflowResponse(
         session_id=final["session_id"],
         summary=final["summary"],
@@ -198,6 +226,7 @@ async def get_workflow_result(
         route=final["route"],
         approval_status=final["approval_status"],
         confidence=api_confidence,
+        groundedness=api_groundedness,
     )
 
 
