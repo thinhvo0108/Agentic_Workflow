@@ -1,0 +1,111 @@
+services:
+
+  # ── Frontend ──────────────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      target: dev
+    ports:
+      - "5173:5173"
+    environment:
+      # Points the Vite dev-server proxy at the backend container
+      VITE_API_PROXY_TARGET: http://backend:8000
+    volumes:
+      - ./frontend:/app
+      - frontend_nm:/app/node_modules   # keep container's node_modules separate
+    depends_on:
+      backend:
+        condition: service_started
+    restart: unless-stopped
+
+  # ── Backend ───────────────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      target: dev
+    ports:
+      - "8000:8000"
+    env_file: ./backend/.env
+    environment:
+      # Override localhost defaults with Docker service names
+      POSTGRES_HOST: postgres
+      CHROMA_HOST: chromadb
+      CHROMA_PORT: "8000"          # chromadb's *internal* port
+      OLLAMA_BASE_URL: http://ollama:11434
+    volumes:
+      - ./backend:/app             # hot-reload: code changes apply instantly
+    depends_on:
+      postgres:
+        condition: service_healthy
+      chromadb:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    restart: unless-stopped
+
+  # ── PostgreSQL ────────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-agentic_workflow}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-agentic_workflow}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+
+  # ── ChromaDB ──────────────────────────────────────────────────────────────────
+  chromadb:
+    image: chromadb/chroma:0.6.3
+    ports:
+      - "8001:8000"                # host:8001 → container:8000
+    environment:
+      CHROMA_SERVER_AUTHN_CREDENTIALS_FILE: ""
+      ANONYMIZED_TELEMETRY: "false"
+    volumes:
+      - chroma_data:/chroma/chroma
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8000/api/v1/heartbeat || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+
+  # ── Ollama ────────────────────────────────────────────────────────────────────
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama  # persists pulled models across restarts
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:11434/api/tags || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    restart: unless-stopped
+    # ── NVIDIA GPU (Linux only) ─────────────────────────────────────────────────
+    # Uncomment the block below if you have an NVIDIA GPU and nvidia-container-toolkit:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+volumes:
+  postgres_data:
+  chroma_data:
+  ollama_data:
+  frontend_nm:    # isolates container node_modules from host
