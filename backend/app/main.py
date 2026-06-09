@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 
 from app.api.routes import router
 from app.core.config import get_settings
-from app.core.exceptions import AgenticWorkflowError
+from app.core.exceptions import AgenticWorkflowError, ApprovalError
 from app.core.logging import configure_logging, get_logger
 from app.observability.tracing import configure_tracing
 
@@ -19,6 +19,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
     configure_logging(settings.app.log_level)
     configure_tracing()
+
+    from app.api.dependencies import init_workflow
+    init_workflow()
+
     _logger.info("startup", env=settings.app.env, port=settings.app.port)
     yield
     _logger.info("shutdown")
@@ -44,6 +48,13 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(router)
+
+    @app.exception_handler(ApprovalError)
+    async def approval_error_handler(request: Request, exc: ApprovalError) -> JSONResponse:
+        return JSONResponse(
+            status_code=status.HTTP_409_CONFLICT,
+            content={"error": exc.message},
+        )
 
     @app.exception_handler(AgenticWorkflowError)
     async def agentic_error_handler(request: Request, exc: AgenticWorkflowError) -> JSONResponse:

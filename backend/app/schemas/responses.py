@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -18,7 +18,7 @@ class WorkflowResponse(BaseModel):
     citations: list[Citation] = Field(default_factory=list)
     route: Literal["research", "support"]
     approval_status: Literal["pending", "approved", "rejected"]
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class WorkflowStatusResponse(BaseModel):
@@ -35,7 +35,7 @@ class ApprovalResponse(BaseModel):
     action: Literal["approved", "rejected"]
     reviewer_id: str
     comment: str | None = None
-    processed_at: datetime = Field(default_factory=datetime.utcnow)
+    processed_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class ErrorResponse(BaseModel):
