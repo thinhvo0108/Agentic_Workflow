@@ -3,12 +3,14 @@ from typing import AsyncIterator
 
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 
 from app.api.routes import router
 from app.core.config import get_settings
 from app.core.exceptions import AgenticWorkflowError, ApprovalError
 from app.core.logging import configure_logging, get_logger
+from app.observability.metrics import configure_metrics
+from app.observability.middleware import RequestTracingMiddleware
 from app.observability.tracing import configure_tracing
 
 _logger = get_logger(__name__)
@@ -18,6 +20,7 @@ _logger = get_logger(__name__)
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
     configure_logging(settings.app.log_level)
+    configure_metrics()
     configure_tracing()
 
     from app.api.dependencies import init_workflow
@@ -39,6 +42,8 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
+    # ── Middleware ─────────────────────────────────────────────────────────────
+    app.add_middleware(RequestTracingMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"] if settings.app.env == "development" else [],
@@ -47,8 +52,22 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    # ── Routes ─────────────────────────────────────────────────────────────────
     app.include_router(router)
 
+    # ── Prometheus metrics endpoint ────────────────────────────────────────────
+    @app.get("/metrics", include_in_schema=False, tags=["ops"])
+    def metrics_endpoint() -> Response:
+        """Expose Prometheus metrics for scraping by Prometheus / Grafana."""
+        from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
+        return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
+    # ── Health ─────────────────────────────────────────────────────────────────
+    @app.get("/health", tags=["ops"])
+    async def health() -> dict:
+        return {"status": "ok"}
+
+    # ── Exception handlers ─────────────────────────────────────────────────────
     @app.exception_handler(ApprovalError)
     async def approval_error_handler(request: Request, exc: ApprovalError) -> JSONResponse:
         return JSONResponse(
@@ -63,10 +82,6 @@ def create_app() -> FastAPI:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"error": exc.message, "detail": str(exc.details) or None},
         )
-
-    @app.get("/health", tags=["ops"])
-    async def health() -> dict:
-        return {"status": "ok"}
 
     return app
 

@@ -1,9 +1,20 @@
+"""
+LangGraph workflow definition.
+
+Each node is wrapped with observe_node() which adds:
+  • An OTel span   (workflow.node.<name>)
+  • Duration histogram   (workflow_node_duration_seconds)
+  • Error counter        (workflow_node_errors_total)
+  • trace_id / span_id injected into structlog context vars for the node body
+"""
+
 from typing import Any
 
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
 from app.graph.state import AppState
+from app.observability.node_telemetry import observe_node
 
 
 def _route_decision(state: AppState) -> str:
@@ -48,16 +59,18 @@ def build_workflow() -> StateGraph:
 
     graph = StateGraph(AppState)
 
-    graph.add_node("router", router_node)
-    graph.add_node("research", research_node)
-    graph.add_node("support", support_node)
-    graph.add_node("retriever", retriever_node)
-    graph.add_node("reranker", reranker_node)
-    graph.add_node("generator", generator_node)
-    graph.add_node("structured_output", structured_output_node)
-    graph.add_node("checkpoint", checkpoint_node)
-    graph.add_node("human_approval", human_approval_node)
-    graph.add_node("final_response", final_response_node)
+    # Every node is wrapped with observe_node() — this is the single place
+    # where telemetry is applied so no individual node file needs to change.
+    graph.add_node("router",           observe_node("router",           router_node))
+    graph.add_node("research",         observe_node("research",         research_node))
+    graph.add_node("support",          observe_node("support",          support_node))
+    graph.add_node("retriever",        observe_node("retriever",        retriever_node))
+    graph.add_node("reranker",         observe_node("reranker",         reranker_node))
+    graph.add_node("generator",        observe_node("generator",        generator_node))
+    graph.add_node("structured_output",observe_node("structured_output",structured_output_node))
+    graph.add_node("checkpoint",       observe_node("checkpoint",       checkpoint_node))
+    graph.add_node("human_approval",   observe_node("human_approval",   human_approval_node))
+    graph.add_node("final_response",   observe_node("final_response",   final_response_node))
 
     graph.add_edge(START, "router")
     graph.add_conditional_edges(
