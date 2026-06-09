@@ -1,0 +1,101 @@
+name: Backend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend.yml"
+
+defaults:
+  run:
+    working-directory: backend
+
+jobs:
+  # ── Lint ──────────────────────────────────────────────────────────────────────
+  lint:
+    name: Lint (ruff)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+
+      - name: Install dev dependencies
+        run: pip install ".[dev]"
+
+      - name: Check formatting
+        run: ruff format --check .
+
+      - name: Check lint rules
+        run: ruff check .
+
+  # ── Type check ────────────────────────────────────────────────────────────────
+  typecheck:
+    name: Type-check (mypy)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+
+      - name: Install dev dependencies
+        run: pip install ".[dev]"
+
+      - name: Run mypy
+        run: mypy app/
+
+  # ── Unit tests ────────────────────────────────────────────────────────────────
+  test:
+    name: Unit tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+
+      - name: Install dev dependencies
+        run: pip install ".[dev]"
+
+      - name: Run unit tests
+        # Skip integration tests (they require a live PostgreSQL instance).
+        # Override addopts to replace html report with xml for CI upload.
+        run: |
+          pytest tests/unit \
+            -m "not integration" \
+            --override-ini="addopts=" \
+            --cov=app \
+            --cov-report=xml \
+            --cov-report=term-missing \
+            -q
+        env:
+          APP_ENV: development
+          POSTGRES_PASSWORD: postgres
+
+      - name: Upload coverage report
+        uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          files: backend/coverage.xml
+          flags: backend
+          token: ${{ secrets.CODECOV_TOKEN }}

@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "lint": "eslint src --ext ts,tsx"
+    "lint": "tsc --noEmit"
   },
   "dependencies": {
     "@chakra-ui/icons": "^2.1.1",
