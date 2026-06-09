@@ -92,6 +92,9 @@ python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = "--cov=app --cov-report=term-missing --cov-report=html"
+markers = [
+    "integration: marks tests that require a live PostgreSQL instance (deselect with -m 'not integration')",
+]
 
 [tool.coverage.run]
 source = ["app"]
