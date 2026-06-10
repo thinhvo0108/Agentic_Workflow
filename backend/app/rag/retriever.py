@@ -68,9 +68,10 @@ class RetrieverService:
         self,
         vector_store: VectorStoreClient | None = None,
         embedding_service: EmbeddingService | None = None,
+        collection_name: str | None = None,
     ) -> None:
         self._settings = get_settings()
-        self._store = vector_store or VectorStoreClient()
+        self._store = vector_store or VectorStoreClient(collection_name=collection_name)
         self._embeddings = embedding_service or EmbeddingService()
 
     async def retrieve(

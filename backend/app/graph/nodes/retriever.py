@@ -1,3 +1,4 @@
+from app.core.config import get_settings
 from app.core.exceptions import EmbeddingError, RetrievalError
 from app.core.logging import get_logger
 from app.graph.state import AppState, make_error
@@ -28,7 +29,10 @@ async def retriever_node(state: AppState) -> dict:
     step = state.get("step_count", 0) + 1
 
     try:
-        service = RetrieverService()
+        route = state.get("route")
+        settings = get_settings()
+        collection_name = settings.chroma.collection_for(route) if route else None
+        service = RetrieverService(collection_name=collection_name)
         docs = await service.retrieve(state["query"])
     except (EmbeddingError, RetrievalError) as exc:
         _logger.error(

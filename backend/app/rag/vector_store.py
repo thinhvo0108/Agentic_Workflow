@@ -38,9 +38,14 @@ class VectorStoreClient:
         When None the client is built from settings at first use.
     """
 
-    def __init__(self, client: Any | None = None) -> None:
+    def __init__(
+        self,
+        client: Any | None = None,
+        collection_name: str | None = None,
+    ) -> None:
         self._settings = get_settings()
         self._raw_client: Any | None = client
+        self._collection_name = collection_name or self._settings.chroma.collection_name
         self._collection: Any | None = None
 
     # ── Lazy initialisation ────────────────────────────────────────────────────
@@ -62,19 +67,15 @@ class VectorStoreClient:
         try:
             self._collection = await asyncio.to_thread(
                 client.get_or_create_collection,
-                name=self._settings.chroma.collection_name,
+                name=self._collection_name,
                 metadata=_COLLECTION_METADATA,
             )
         except Exception as exc:
             raise RetrievalError(
-                f"Failed to initialise ChromaDB collection "
-                f"'{self._settings.chroma.collection_name}': {exc}"
+                f"Failed to initialise ChromaDB collection '{self._collection_name}': {exc}"
             ) from exc
 
-        _logger.info(
-            "chroma_collection_ready",
-            collection=self._settings.chroma.collection_name,
-        )
+        _logger.info("chroma_collection_ready", collection=self._collection_name)
         return self._collection
 
     # ── Health ─────────────────────────────────────────────────────────────────

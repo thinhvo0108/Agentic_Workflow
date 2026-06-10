@@ -34,6 +34,14 @@ class ChromaSettings(BaseSettings):
     def host_url(self) -> str:
         return f"http://{self.host}:{self.port}"
 
+    def collection_for(self, agent_type: str) -> str:
+        """Return the ChromaDB collection name for a given agent type.
+
+        Produces e.g. "knowledge_base_research", "knowledge_base_support".
+        Adding a new agent requires no config change — just pass its route string.
+        """
+        return f"{self.collection_name}_{agent_type}"
+
     model_config = SettingsConfigDict(env_prefix="CHROMA_", env_file=".env", extra="ignore")
 
 

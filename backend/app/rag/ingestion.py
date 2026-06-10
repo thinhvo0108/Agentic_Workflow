@@ -112,9 +112,10 @@ class IngestionPipeline:
         embedding_service: EmbeddingService | None = None,
         chunk_size: int = 512,
         chunk_overlap: int = 64,
+        collection_name: str | None = None,
     ) -> None:
         self._settings = get_settings()
-        self._store = vector_store or VectorStoreClient()
+        self._store = vector_store or VectorStoreClient(collection_name=collection_name)
         self._embeddings = embedding_service or EmbeddingService()
         self._chunk_size = chunk_size
         self._chunk_overlap = chunk_overlap
