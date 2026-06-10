@@ -46,6 +46,12 @@ export interface GroundednessResult {
   evaluated_at: string;
 }
 
+export interface WebSearchResult {
+  title: string;
+  link: string;
+  snippet: string;
+}
+
 export interface DraftResponse {
   session_id: string;
   query: string;
@@ -55,6 +61,7 @@ export interface DraftResponse {
   citations: Citation[];
   confidence: ConfidenceScores | null;
   groundedness: GroundednessResult | null;
+  web_search_results: WebSearchResult[];
 }
 
 export interface WorkflowResponse {

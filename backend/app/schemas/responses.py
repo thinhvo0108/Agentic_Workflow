@@ -41,6 +41,14 @@ class GroundednessResult(BaseModel):
     evaluated_at: str = Field(description="ISO-8601 UTC timestamp of the evaluation")
 
 
+class WebSearchResult(BaseModel):
+    """A single DuckDuckGo result fetched to assist the human reviewer."""
+
+    title: str
+    link: str
+    snippet: str
+
+
 class DraftResponse(BaseModel):
     """Structured output available for human review at the approval gate."""
 
@@ -52,6 +60,7 @@ class DraftResponse(BaseModel):
     citations: list[Citation] = Field(default_factory=list)
     confidence: ConfidenceScores | None = None
     groundedness: GroundednessResult | None = None
+    web_search_results: list[WebSearchResult] = Field(default_factory=list)
 
 
 class WorkflowResponse(BaseModel):

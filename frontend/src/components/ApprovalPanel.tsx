@@ -19,7 +19,7 @@ import {
   Textarea,
   VStack,
 } from '@chakra-ui/react';
-import { AttachmentIcon, CheckCircleIcon, CloseIcon, WarningTwoIcon } from '@chakra-ui/icons';
+import { AttachmentIcon, CheckCircleIcon, CloseIcon, ExternalLinkIcon, SearchIcon, WarningTwoIcon } from '@chakra-ui/icons';
 import { getWorkflowDraft } from '../api/workflow';
 import type { ApprovalAction, DraftResponse } from '../types/workflow';
 import ConfidenceStats, { scoreColor } from './ConfidenceStats';
@@ -206,6 +206,68 @@ export default function ApprovalPanel({ sessionId, query, onDecision }: Props) {
               isDisabled={isLoading}
               placeholder="The final answer to deliver…"
             />
+          </Box>
+
+          {/* Web search results — always rendered so reviewer knows status */}
+          <Box>
+            <HStack spacing={2} mb={2} align="center">
+              <SearchIcon color="teal.500" boxSize={3} />
+              <Text fontSize="2xs" fontWeight="bold" textTransform="uppercase" color="teal.600" letterSpacing="wider">
+                Information from the web
+              </Text>
+              {draft.web_search_results && draft.web_search_results.length > 0 && (
+                <Badge colorScheme="teal" variant="subtle" fontSize="2xs" borderRadius="full">
+                  {draft.web_search_results.length} results
+                </Badge>
+              )}
+            </HStack>
+
+            {(!draft.web_search_results || draft.web_search_results.length === 0) ? (
+              <Box
+                bg="gray.50"
+                border="1px dashed"
+                borderColor="gray.300"
+                borderRadius="md"
+                px={4}
+                py={3}
+              >
+                <Text fontSize="xs" color="gray.500" fontStyle="italic">
+                  No web results available for this query.
+                </Text>
+              </Box>
+            ) : (
+              <VStack align="stretch" spacing={2}>
+                {draft.web_search_results.map((r, i) => (
+                  <Box
+                    key={i}
+                    bg="teal.50"
+                    border="1px solid"
+                    borderColor="teal.200"
+                    borderRadius="md"
+                    p={3}
+                  >
+                    <HStack justify="space-between" align="start" mb={1} spacing={2}>
+                      <Text fontSize="xs" fontWeight="semibold" color="teal.800" noOfLines={1} flex={1}>
+                        {r.title || 'Untitled'}
+                      </Text>
+                      {r.link && (
+                        <a href={r.link} target="_blank" rel="noopener noreferrer">
+                          <ExternalLinkIcon color="teal.500" boxSize={3} flexShrink={0} />
+                        </a>
+                      )}
+                    </HStack>
+                    <Text fontSize="xs" color="teal.700" noOfLines={3} lineHeight="tall">
+                      {r.snippet}
+                    </Text>
+                    {r.link && (
+                      <Text fontSize="2xs" color="teal.500" mt={1} noOfLines={1}>
+                        {r.link}
+                      </Text>
+                    )}
+                  </Box>
+                ))}
+              </VStack>
+            )}
           </Box>
 
           {/* Citations */}

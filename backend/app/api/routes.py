@@ -42,6 +42,7 @@ from app.schemas.responses import (
     DraftResponse,
     EvaluatedClaim,
     GroundednessResult,
+    WebSearchResult,
     WorkflowResponse,
     WorkflowStatusResponse,
 )
@@ -313,6 +314,15 @@ async def get_workflow_draft(
             evaluated_at=gnd_data.get("evaluated_at", ""),
         )
 
+    web_search_results = [
+        WebSearchResult(
+            title=r.get("title", ""),
+            link=r.get("link", ""),
+            snippet=r.get("snippet", ""),
+        )
+        for r in (state.get("web_search_results") or [])
+    ]
+
     return DraftResponse(
         session_id=session_id,
         query=state.get("query", ""),
@@ -322,6 +332,7 @@ async def get_workflow_draft(
         citations=citations,
         confidence=api_confidence,
         groundedness=api_groundedness,
+        web_search_results=web_search_results,
     )
 
 

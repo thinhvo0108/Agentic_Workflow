@@ -12,7 +12,6 @@ dependencies = [
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.32.0",
     "python-multipart>=0.0.12",
-
     # LangChain ecosystem
     "langchain>=0.3.0",
     "langchain-core>=0.3.0",
@@ -20,23 +19,18 @@ dependencies = [
     "langchain-ollama>=0.2.0",
     "langgraph>=0.2.0",
     "langgraph-checkpoint-postgres>=2.0.0",
-
     # Vector store
     "chromadb>=0.5.0",
-
     # Embeddings & reranking
     "sentence-transformers>=3.3.0",
-
     # Database
     "asyncpg>=0.30.0",
     "psycopg[binary,pool]>=3.2.0",
     "sqlalchemy[asyncio]>=2.0.0",
     "alembic>=1.14.0",
-
     # Validation
     "pydantic>=2.10.0",
     "pydantic-settings>=2.6.0",
-
     # Observability
     "opentelemetry-api>=1.28.0",
     "opentelemetry-sdk>=1.28.0",
@@ -44,13 +38,12 @@ dependencies = [
     "opentelemetry-exporter-otlp-proto-grpc>=1.28.0",
     "opentelemetry-exporter-prometheus>=0.44b0",
     "prometheus-client>=0.20.0",
-
     # Logging
     "structlog>=24.4.0",
-
     # HTTP client
     "httpx>=0.28.0",
-
+    # Web search (used by web_search workflow node for manual-approval context)
+    "ddgs>=0.1.0",
     # Utilities
     "python-dotenv>=1.0.0",
     "tenacity>=9.0.0",

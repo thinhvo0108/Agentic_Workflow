@@ -44,11 +44,12 @@ def _pre_approval_decision(state: AppState) -> str:
     """Conditional edge after auto_approval_gate.
 
     Routes to final_response when the gate auto-approved the response
-    (overall confidence >= threshold).  Otherwise defers to human_approval.
+    (overall confidence >= threshold).  Otherwise runs web_search to fetch
+    supporting context for the reviewer before pausing at human_approval.
     """
     if state.get("approval_status") == "approved":
         return "final_response"
-    return "human_approval"
+    return "web_search"
 
 
 def _approval_decision(state: AppState) -> str:
@@ -81,6 +82,7 @@ def build_workflow() -> StateGraph:
     from app.graph.nodes.router import router_node
     from app.graph.nodes.structured_output import structured_output_node
     from app.graph.nodes.support import support_node
+    from app.graph.nodes.web_search import web_search_node
 
     graph = StateGraph(AppState)
 
@@ -96,6 +98,7 @@ def build_workflow() -> StateGraph:
     graph.add_node("groundedness",        observe_node("groundedness",        groundedness_node))
     graph.add_node("checkpoint",          observe_node("checkpoint",          checkpoint_node))
     graph.add_node("auto_approval_gate",  observe_node("auto_approval_gate",  auto_approval_gate_node))
+    graph.add_node("web_search",          observe_node("web_search",          web_search_node))
     graph.add_node("human_approval",      observe_node("human_approval",      human_approval_node))
     graph.add_node("final_response",      observe_node("final_response",      final_response_node))
     graph.add_node("knowledge_update",    observe_node("knowledge_update",    knowledge_update_node))
@@ -117,8 +120,9 @@ def build_workflow() -> StateGraph:
     graph.add_conditional_edges(
         "auto_approval_gate",
         _pre_approval_decision,
-        {"final_response": "final_response", "human_approval": "human_approval"},
+        {"final_response": "final_response", "web_search": "web_search"},
     )
+    graph.add_edge("web_search", "human_approval")
     graph.add_conditional_edges(
         "human_approval",
         _approval_decision,

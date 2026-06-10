@@ -46,6 +46,17 @@ class RankedDocument(TypedDict):
     rerank_score: float     # CrossEncoder relevance score
 
 
+# ── Web search result ─────────────────────────────────────────────────────────
+
+
+class WebSearchResult(TypedDict):
+    """A single result from a DuckDuckGo web search."""
+
+    title: str
+    link: str
+    snippet: str
+
+
 # ── Citation ──────────────────────────────────────────────────────────────────
 
 
@@ -227,6 +238,9 @@ class AppState(TypedDict):
     retrieved_documents: NotRequired[list[RetrievedDocument]]
     reranked_documents: NotRequired[list[RankedDocument]]
 
+    # ── Set by web_search node (manual-approval path only) ─────────────────────
+    web_search_results: NotRequired[list[WebSearchResult]]
+
     # ── Set by generation pipeline ─────────────────────────────────────────────
     draft_response: NotRequired[str | None]
     structured_output: NotRequired[StructuredOutput | None]
@@ -279,6 +293,7 @@ def initial_state(session_id: str, query: str, metadata: dict[str, str] | None =
         route=None,
         retrieved_documents=[],
         reranked_documents=[],
+        web_search_results=[],
         draft_response=None,
         structured_output=None,
         approval_status="pending",

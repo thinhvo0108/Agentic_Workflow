@@ -35,6 +35,7 @@ const STEPS: Step[] = [
   { nodes: ['groundedness'],        label: 'Groundedness', description: 'Verifying answer claims' },
   { nodes: ['checkpoint'],          label: 'Checkpoint',   description: 'Saving progress' },
   { nodes: ['auto_approval_gate'],  label: 'Gate',         description: 'Checking confidence threshold' },
+  { nodes: ['web_search'],          label: 'Web Search',   description: 'Fetching reference from web' },
   { nodes: ['human_approval'],      label: 'Review',       description: 'Awaiting approval' },
   { nodes: ['final_response'],      label: 'Complete',     description: 'Response finalized' },
   { nodes: ['knowledge_update'],    label: 'KB Update',    description: 'Adding to knowledge base' },
@@ -49,19 +50,22 @@ function getActiveIndex(currentNode: string | null, status: WorkflowStatus): num
 }
 
 function resolveDescription(step: Step, status: WorkflowStatus, autoApproved?: boolean): string {
-  const isGate   = step.nodes.includes('auto_approval_gate');
-  const isReview = step.nodes.includes('human_approval');
-  const isKB     = step.nodes.includes('knowledge_update');
+  const isGate      = step.nodes.includes('auto_approval_gate');
+  const isWebSearch = step.nodes.includes('web_search');
+  const isReview    = step.nodes.includes('human_approval');
+  const isKB        = step.nodes.includes('knowledge_update');
 
   if (status === 'awaiting_approval') {
-    if (isGate)   return 'Confidence below threshold';
-    if (isReview) return 'Manual review required';
+    if (isGate)      return 'Confidence below threshold';
+    if (isWebSearch) return 'Web context fetched';
+    if (isReview)    return 'Manual review required';
   }
 
   if ((status === 'completed' || status === 'rejected') && autoApproved !== undefined) {
-    if (isGate)   return autoApproved ? 'Confidence ≥ 70%'          : 'Confidence below threshold';
-    if (isReview) return autoApproved ? 'Auto-approved'              : 'Approved by reviewer';
-    if (isKB)     return autoApproved ? 'Skipped — high confidence'  : 'Added to knowledge base';
+    if (isGate)      return autoApproved ? 'Confidence ≥ 70%'         : 'Confidence below threshold';
+    if (isWebSearch) return autoApproved ? 'Skipped — auto-approved'  : 'Web context fetched';
+    if (isReview)    return autoApproved ? 'Auto-approved'             : 'Approved by reviewer';
+    if (isKB)        return autoApproved ? 'Skipped — high confidence' : 'Added to knowledge base';
   }
 
   return step.description;
