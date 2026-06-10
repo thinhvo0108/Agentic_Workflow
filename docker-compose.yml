@@ -32,6 +32,7 @@ services:
       CHROMA_HOST: chromadb
       CHROMA_PORT: "8000"          # chromadb's *internal* port
       OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_DEFAULT_MODEL: qwen3:4b
     volumes:
       - ./backend:/app             # hot-reload: code changes apply instantly
     depends_on:
@@ -113,7 +114,7 @@ services:
       OLLAMA_HOST: http://ollama:11434
     entrypoint: ["/bin/sh", "-c"]
     command: >
-      "ollama pull qwen3:14b &&
+      "ollama pull qwen3:4b &&
        ollama pull nomic-embed-text"
     depends_on:
       ollama:
