@@ -8,11 +8,10 @@ services:
     ports:
       - "5173:5173"
     environment:
-      # Points the Vite dev-server proxy at the backend container
       VITE_API_PROXY_TARGET: http://backend:8000
     volumes:
       - ./frontend:/app
-      - frontend_nm:/app/node_modules   # keep container's node_modules separate
+      - frontend_nm:/app/node_modules
     depends_on:
       backend:
         condition: service_healthy
@@ -27,19 +26,22 @@ services:
       - "8000:8000"
     env_file: ./backend/.env
     environment:
-      # Override localhost defaults with Docker service names
       POSTGRES_HOST: postgres
       CHROMA_HOST: chromadb
-      CHROMA_PORT: "8000"          # chromadb's *internal* port
-      OLLAMA_BASE_URL: http://host.docker.internal:11434
+      CHROMA_PORT: "8000"
+      OLLAMA_BASE_URL: http://ollama:11434
       OLLAMA_DEFAULT_MODEL: llama3.2:latest
     volumes:
-      - ./backend:/app             # hot-reload: code changes apply instantly
+      - ./backend:/app
     depends_on:
       postgres:
         condition: service_healthy
       chromadb:
         condition: service_healthy
+      ollama:
+        condition: service_healthy          # waits until ollama serve is up
+      ollama-pull:
+        condition: service_completed_successfully  # waits until models are pulled
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
       interval: 10s
@@ -71,7 +73,7 @@ services:
   chromadb:
     image: chromadb/chroma:1.0.12
     ports:
-      - "8001:8000"                # host:8001 → container:8000
+      - "8001:8000"
     environment:
       CHROMA_SERVER_AUTHN_CREDENTIALS_FILE: ""
       ANONYMIZED_TELEMETRY: "false"
@@ -86,38 +88,51 @@ services:
     restart: unless-stopped
 
   # ── Ollama ────────────────────────────────────────────────────────────────────
-  # Ollama runs NATIVELY on the host (ollama serve) to use the Metal GPU on
-  # Apple Silicon. The backend reaches it via host.docker.internal:11434.
-  #
-  # To run Ollama inside Docker instead (Linux/NVIDIA), uncomment below and
-  # change OLLAMA_BASE_URL in the backend environment to http://ollama:11434.
-  #
-  # ollama:
-  #   image: ollama/ollama:latest
-  #   ports:
-  #     - "11434:11434"
-  #   volumes:
-  #     - ollama_data:/root/.ollama
-  #   healthcheck:
-  #     test: ["CMD", "ollama", "list"]
-  #     interval: 10s
-  #     timeout: 10s
-  #     retries: 20
-  #     start_period: 60s
-  #   restart: unless-stopped
-  #
-  # ollama-init:
-  #   image: ollama/ollama:latest
-  #   environment:
-  #     OLLAMA_HOST: http://ollama:11434
-  #   entrypoint: ["/bin/sh", "-c"]
-  #   command: "ollama pull qwen3:4b && ollama pull nomic-embed-text"
-  #   depends_on:
-  #     ollama:
-  #       condition: service_healthy
-  #   restart: "no"
+  # Default entrypoint (ollama serve). Healthcheck only verifies the server
+  # is accepting connections — model presence is guaranteed by ollama-pull
+  # completing successfully before the backend starts.
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      OLLAMA_KEEP_ALIVE: "24h"
+      OLLAMA_NUM_PARALLEL: "1"
+    deploy:
+      resources:
+        limits:
+          cpus: "8.0"
+          memory: 12G
+        reservations:
+          cpus: "4.0"
+          memory: 6G
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list >/dev/null 2>&1 || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 15s
+    restart: unless-stopped
+
+  # Pulls required models into the shared ollama_data volume.
+  # Exits 0 on success so backend's service_completed_successfully gate works.
+  # restart: on-failure retries on transient network errors; once models are
+  # cached in ollama_data the pull is a fast no-op on subsequent stack starts.
+  ollama-pull:
+    image: ollama/ollama:latest
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["ollama pull llama3.2:latest && ollama pull nomic-embed-text"]
+    depends_on:
+      ollama:
+        condition: service_healthy
+    restart: on-failure
 
 volumes:
   postgres_data:
   chroma_data:
-  frontend_nm:    # isolates container node_modules from host
+  ollama_data:
+  frontend_nm:
