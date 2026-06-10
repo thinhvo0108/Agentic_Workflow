@@ -129,6 +129,8 @@ class FinalResponse(TypedDict):
     route: RouteDecision
     approval_status: Literal["approved"]  # only "approved" responses reach here
     auto_approved: bool
+    reviewer_id: str | None
+    reviewer_comment: str | None
     created_at: str  # ISO-8601 UTC
     confidence: NotRequired[ConfidenceScores | None]
     groundedness: NotRequired[GroundednessResult | None]

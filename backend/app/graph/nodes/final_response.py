@@ -58,6 +58,7 @@ async def final_response_node(state: AppState) -> dict:
         overall=score_overall(router_conf, retrieval_conf, answer_conf),
     )
 
+    record = state.get("approval_record") or {}
     response = FinalResponse(
         session_id=state["session_id"],
         summary=so.get("summary", ""),
@@ -66,6 +67,8 @@ async def final_response_node(state: AppState) -> dict:
         route=state.get("route") or "research",
         approval_status="approved",
         auto_approved=bool(state.get("auto_approved", False)),
+        reviewer_id=record.get("reviewer_id") or None,
+        reviewer_comment=record.get("comment") or None,
         created_at=datetime.now(UTC).isoformat(),
         confidence=confidence,
         groundedness=state.get("groundedness"),

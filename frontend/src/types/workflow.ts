@@ -65,6 +65,8 @@ export interface WorkflowResponse {
   route: RouteDecision;
   approval_status: ApprovalAction;
   auto_approved: boolean;
+  reviewer_id: string | null;
+  reviewer_comment: string | null;
   confidence: ConfidenceScores | null;
   groundedness: GroundednessResult | null;
   created_at: string;

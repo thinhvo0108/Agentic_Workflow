@@ -62,6 +62,8 @@ class WorkflowResponse(BaseModel):
     route: Literal["research", "support"]
     approval_status: Literal["pending", "approved", "rejected"]
     auto_approved: bool = False
+    reviewer_id: str | None = None
+    reviewer_comment: str | None = None
     confidence: ConfidenceScores | None = None
     groundedness: GroundednessResult | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))

@@ -227,6 +227,8 @@ async def get_workflow_result(
         route=final["route"],
         approval_status=final["approval_status"],
         auto_approved=bool(final.get("auto_approved", False)),
+        reviewer_id=final.get("reviewer_id"),
+        reviewer_comment=final.get("reviewer_comment"),
         confidence=api_confidence,
         groundedness=api_groundedness,
     )

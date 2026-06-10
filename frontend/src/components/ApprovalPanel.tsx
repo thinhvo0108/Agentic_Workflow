@@ -7,15 +7,12 @@ import {
   Button,
   Card,
   CardBody,
-  CircularProgress,
-  CircularProgressLabel,
   Divider,
   FormControl,
   FormHelperText,
   FormLabel,
   HStack,
   Input,
-  Progress,
   Skeleton,
   SkeletonText,
   Text,
@@ -25,30 +22,12 @@ import {
 import { AttachmentIcon, CheckCircleIcon, CloseIcon, WarningTwoIcon } from '@chakra-ui/icons';
 import { getWorkflowDraft } from '../api/workflow';
 import type { ApprovalAction, DraftResponse } from '../types/workflow';
+import ConfidenceStats, { scoreColor } from './ConfidenceStats';
 
 const ROUTE_LABELS: Record<string, { label: string; color: string }> = {
   research: { label: 'Research Agent', color: 'blue' },
   support:  { label: 'Support Agent',  color: 'teal' },
 };
-
-function scoreColor(score: number): string {
-  if (score >= 0.75) return 'green';
-  if (score >= 0.45) return 'orange';
-  return 'red';
-}
-
-function ScoreBar({ label, value }: { label: string; value: number }) {
-  const pct = Math.round(value * 100);
-  return (
-    <Box>
-      <HStack justify="space-between" mb={1}>
-        <Text fontSize="2xs" color="gray.500" textTransform="uppercase" letterSpacing="wider">{label}</Text>
-        <Text fontSize="2xs" fontWeight="bold" color={`${scoreColor(value)}.600`}>{pct}%</Text>
-      </HStack>
-      <Progress value={pct} size="xs" colorScheme={scoreColor(value)} borderRadius="full" bg="gray.100" />
-    </Box>
-  );
-}
 
 interface Props {
   sessionId: string;
@@ -108,10 +87,8 @@ export default function ApprovalPanel({ sessionId, query, onDecision }: Props) {
     }
   };
 
-  const route            = draft ? (ROUTE_LABELS[draft.route] ?? { label: draft.route, color: 'gray' }) : null;
-  const overallScore     = draft?.confidence?.overall ?? null;
-  const groundScore      = draft?.groundedness?.groundedness_score ?? null;
-  const unsupported      = draft?.groundedness?.unsupported_claims ?? [];
+  const route        = draft ? (ROUTE_LABELS[draft.route] ?? { label: draft.route, color: 'gray' }) : null;
+  const overallScore = draft?.confidence?.overall ?? null;
 
   return (
     <VStack align="stretch" spacing={5}>
@@ -269,76 +246,11 @@ export default function ApprovalPanel({ sessionId, query, onDecision }: Props) {
             </Box>
           )}
 
-          {/* Confidence + groundedness scores */}
-          {(overallScore !== null || groundScore !== null) && (
-            <HStack
-              spacing={4}
-              bg="gray.50"
-              border="1px solid"
-              borderColor="gray.200"
-              borderRadius="lg"
-              p={4}
-              align="start"
-              wrap="wrap"
-            >
-              {overallScore !== null && (
-                <VStack spacing={1} align="center" minW="72px">
-                  <CircularProgress
-                    value={Math.round(overallScore * 100)}
-                    color={`${scoreColor(overallScore)}.400`}
-                    trackColor="gray.100"
-                    size="56px"
-                    thickness="10px"
-                  >
-                    <CircularProgressLabel fontSize="xs" fontWeight="bold">
-                      {Math.round(overallScore * 100)}%
-                    </CircularProgressLabel>
-                  </CircularProgress>
-                  <Text fontSize="2xs" color="gray.500" textAlign="center">Confidence</Text>
-                </VStack>
-              )}
-              {groundScore !== null && (
-                <VStack spacing={1} align="center" minW="72px">
-                  <CircularProgress
-                    value={Math.round(groundScore * 100)}
-                    color={`${scoreColor(groundScore)}.400`}
-                    trackColor="gray.100"
-                    size="56px"
-                    thickness="10px"
-                  >
-                    <CircularProgressLabel fontSize="xs" fontWeight="bold">
-                      {Math.round(groundScore * 100)}%
-                    </CircularProgressLabel>
-                  </CircularProgress>
-                  <Text fontSize="2xs" color="gray.500" textAlign="center">Grounded</Text>
-                </VStack>
-              )}
-              {draft.confidence && (
-                <VStack align="stretch" spacing={2} flex={1} minW="160px">
-                  <ScoreBar label="Routing"   value={draft.confidence.router} />
-                  <ScoreBar label="Retrieval" value={draft.confidence.retrieval} />
-                  <ScoreBar label="Answer"    value={draft.confidence.answer} />
-                </VStack>
-              )}
-            </HStack>
-          )}
-
-          {/* Unsupported claims warning */}
-          {unsupported.length > 0 && (
-            <Alert status="warning" borderRadius="md" fontSize="sm" alignItems="start">
-              <AlertIcon mt={0.5} />
-              <Box>
-                <Text fontWeight="semibold" mb={1}>
-                  {unsupported.length} unsupported claim{unsupported.length > 1 ? 's' : ''} detected
-                </Text>
-                <VStack align="start" spacing={1}>
-                  {unsupported.map((c, i) => (
-                    <Text key={i} fontSize="xs" color="orange.800">· {c.claim}</Text>
-                  ))}
-                </VStack>
-              </Box>
-            </Alert>
-          )}
+          {/* Confidence + groundedness scores + unsupported claims */}
+          <ConfidenceStats
+            confidence={draft.confidence}
+            groundedness={draft.groundedness}
+          />
 
         </VStack>
       )}

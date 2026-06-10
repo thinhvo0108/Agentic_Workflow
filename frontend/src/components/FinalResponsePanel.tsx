@@ -13,8 +13,9 @@ import {
   Text,
   VStack,
 } from '@chakra-ui/react';
-import { CheckCircleIcon } from '@chakra-ui/icons';
+import { CheckCircleIcon, CheckIcon } from '@chakra-ui/icons';
 import type { WorkflowResponse } from '../types/workflow';
+import ConfidenceStats from './ConfidenceStats';
 import DocumentsPanel from './DocumentsPanel';
 
 const ROUTE_LABELS: Record<string, { label: string; color: string }> = {
@@ -31,6 +32,56 @@ export default function FinalResponsePanel({ result }: Props) {
 
   return (
     <VStack align="stretch" spacing={5}>
+
+      {/* Approval stats — shown for both auto and manual approval */}
+      {(result.confidence || result.groundedness) && (
+        <Box>
+          <Text
+            fontSize="2xs"
+            fontWeight="bold"
+            textTransform="uppercase"
+            letterSpacing="wider"
+            mb={3}
+            color={result.auto_approved ? 'purple.400' : 'green.500'}
+          >
+            {result.auto_approved ? 'Auto-approval scores' : 'Review scores'}
+          </Text>
+
+          <ConfidenceStats
+            confidence={result.confidence}
+            groundedness={result.groundedness}
+          />
+
+          {/* Manual approval attribution */}
+          {!result.auto_approved && result.reviewer_id && (
+            <Box
+              mt={3}
+              bg="green.50"
+              border="1px solid"
+              borderColor="green.200"
+              borderRadius="lg"
+              px={4}
+              py={3}
+            >
+              <HStack spacing={2} align="start">
+                <CheckIcon color="green.500" mt="3px" flexShrink={0} />
+                <VStack align="start" spacing={0.5}>
+                  <Text fontSize="xs" color="green.700">
+                    Reviewed and approved by{' '}
+                    <Text as="span" fontWeight="bold">{result.reviewer_id}</Text>
+                  </Text>
+                  {result.reviewer_comment && (
+                    <Text fontSize="xs" color="green.600" fontStyle="italic">
+                      "{result.reviewer_comment}"
+                    </Text>
+                  )}
+                </VStack>
+              </HStack>
+            </Box>
+          )}
+        </Box>
+      )}
+
       <HStack justify="space-between" wrap="wrap" gap={2}>
         <HStack spacing={2}>
           <CheckCircleIcon color="green.500" boxSize={5} />
