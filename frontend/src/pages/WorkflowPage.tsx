@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link as RouterLink, useParams } from 'react-router-dom';
+import { Link as RouterLink, useLocation, useParams } from 'react-router-dom';
 import {
   Alert,
   AlertDescription,
@@ -45,6 +45,8 @@ const STATUS_META: Record<string, { label: string; color: string }> = {
 
 export default function WorkflowPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
+  const { state: navState } = useLocation();
+  const query: string = (navState as { query?: string } | null)?.query ?? '';
   const { status, fetchError, refetch } = useWorkflowPoller(sessionId ?? '');
   const [result, setResult] = useState<WorkflowResponse | null>(null);
   const [resultError, setResultError] = useState<string | null>(null);
@@ -188,7 +190,7 @@ export default function WorkflowPage() {
                 {status?.status === 'awaiting_approval' && (
                   <ApprovalPanel
                     sessionId={sessionId}
-                    query=""
+                    query={query}
                     onDecision={handleApproval}
                   />
                 )}

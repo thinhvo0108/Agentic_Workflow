@@ -36,7 +36,7 @@ export default function HomePage() {
     setSubmitError(null);
     try {
       const { session_id } = await submitWorkflow(query);
-      navigate(`/workflow/${session_id}`);
+      navigate(`/workflow/${session_id}`, { state: { query } });
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : 'Failed to start workflow.');
       setIsLoading(false);
