@@ -188,6 +188,14 @@ class RerankerService:
         )
         return result
 
+    async def warm_up(self) -> None:
+        """Load (or confirm) the reranker model is in the class-level cache.
+
+        Call this during application startup so the first real request doesn't
+        pay the 30-60 s load cost.
+        """
+        await self._get_model()
+
     # ── Test utility ──────────────────────────────────────────────────────────
 
     @classmethod

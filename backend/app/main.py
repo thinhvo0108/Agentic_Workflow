@@ -39,6 +39,17 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     await repo.setup()
     set_repository(repo)
 
+    # Pre-warm the reranker model so the first query doesn't pay the load cost.
+    # bge-reranker-large is ~1 GB and takes 30-60 s on CPU; loading it here
+    # keeps the class-level cache warm after every uvicorn --reload cycle.
+    try:
+        from app.rag.reranker import RerankerService
+        _logger.info("prewarming_reranker")
+        await RerankerService().warm_up()
+        _logger.info("reranker_ready")
+    except Exception as exc:
+        _logger.warning("reranker_prewarm_failed", error=str(exc))
+
     # AsyncPostgresSaver → LangGraph graph state persistence (survives restarts)
     async with AsyncPostgresSaver.from_conn_string(settings.postgres.sync_dsn) as checkpointer:
         await checkpointer.setup()
