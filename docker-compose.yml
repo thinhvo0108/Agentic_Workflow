@@ -39,8 +39,8 @@ services:
         condition: service_healthy
       chromadb:
         condition: service_healthy
-      ollama:
-        condition: service_started
+      ollama-init:
+        condition: service_completed_successfully
     restart: unless-stopped
 
   # ── PostgreSQL ────────────────────────────────────────────────────────────────
@@ -103,6 +103,22 @@ services:
     #         - driver: nvidia
     #           count: 1
     #           capabilities: [gpu]
+
+  # ── Ollama model initialiser ──────────────────────────────────────────────────
+  # Runs once after Ollama is healthy, pulls required models, then exits.
+  # On subsequent starts the pull is a no-op if models are already in the volume.
+  ollama-init:
+    image: ollama/ollama:latest
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    entrypoint: ["/bin/sh", "-c"]
+    command: >
+      "ollama pull qwen3:14b &&
+       ollama pull nomic-embed-text"
+    depends_on:
+      ollama:
+        condition: service_healthy
+    restart: "no"
 
 volumes:
   postgres_data:
