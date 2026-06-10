@@ -15,7 +15,7 @@ services:
       - frontend_nm:/app/node_modules   # keep container's node_modules separate
     depends_on:
       backend:
-        condition: service_started
+        condition: service_healthy
     restart: unless-stopped
 
   # ── Backend ───────────────────────────────────────────────────────────────────
@@ -31,8 +31,8 @@ services:
       POSTGRES_HOST: postgres
       CHROMA_HOST: chromadb
       CHROMA_PORT: "8000"          # chromadb's *internal* port
-      OLLAMA_BASE_URL: http://ollama:11434
-      OLLAMA_DEFAULT_MODEL: qwen3:4b
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+      OLLAMA_DEFAULT_MODEL: llama3.2:latest
     volumes:
       - ./backend:/app             # hot-reload: code changes apply instantly
     depends_on:
@@ -40,8 +40,12 @@ services:
         condition: service_healthy
       chromadb:
         condition: service_healthy
-      ollama-init:
-        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
     restart: unless-stopped
 
   # ── PostgreSQL ────────────────────────────────────────────────────────────────
@@ -65,7 +69,7 @@ services:
 
   # ── ChromaDB ──────────────────────────────────────────────────────────────────
   chromadb:
-    image: chromadb/chroma:0.6.3
+    image: chromadb/chroma:1.0.12
     ports:
       - "8001:8000"                # host:8001 → container:8000
     environment:
@@ -74,7 +78,7 @@ services:
     volumes:
       - chroma_data:/chroma/chroma
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:8000/api/v1/heartbeat || exit 1"]
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/8000'"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -82,47 +86,38 @@ services:
     restart: unless-stopped
 
   # ── Ollama ────────────────────────────────────────────────────────────────────
-  ollama:
-    image: ollama/ollama:latest
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama  # persists pulled models across restarts
-    healthcheck:
-      test: ["CMD", "ollama", "list"]
-      interval: 10s
-      timeout: 10s
-      retries: 20
-      start_period: 60s
-    restart: unless-stopped
-    # ── NVIDIA GPU (Linux only) ─────────────────────────────────────────────────
-    # Uncomment the block below if you have an NVIDIA GPU and nvidia-container-toolkit:
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: 1
-    #           capabilities: [gpu]
-
-  # ── Ollama model initialiser ──────────────────────────────────────────────────
-  # Runs once after Ollama is healthy, pulls required models, then exits.
-  # On subsequent starts the pull is a no-op if models are already in the volume.
-  ollama-init:
-    image: ollama/ollama:latest
-    environment:
-      OLLAMA_HOST: http://ollama:11434
-    entrypoint: ["/bin/sh", "-c"]
-    command: >
-      "ollama pull qwen3:4b &&
-       ollama pull nomic-embed-text"
-    depends_on:
-      ollama:
-        condition: service_healthy
-    restart: "no"
+  # Ollama runs NATIVELY on the host (ollama serve) to use the Metal GPU on
+  # Apple Silicon. The backend reaches it via host.docker.internal:11434.
+  #
+  # To run Ollama inside Docker instead (Linux/NVIDIA), uncomment below and
+  # change OLLAMA_BASE_URL in the backend environment to http://ollama:11434.
+  #
+  # ollama:
+  #   image: ollama/ollama:latest
+  #   ports:
+  #     - "11434:11434"
+  #   volumes:
+  #     - ollama_data:/root/.ollama
+  #   healthcheck:
+  #     test: ["CMD", "ollama", "list"]
+  #     interval: 10s
+  #     timeout: 10s
+  #     retries: 20
+  #     start_period: 60s
+  #   restart: unless-stopped
+  #
+  # ollama-init:
+  #   image: ollama/ollama:latest
+  #   environment:
+  #     OLLAMA_HOST: http://ollama:11434
+  #   entrypoint: ["/bin/sh", "-c"]
+  #   command: "ollama pull qwen3:4b && ollama pull nomic-embed-text"
+  #   depends_on:
+  #     ollama:
+  #       condition: service_healthy
+  #   restart: "no"
 
 volumes:
   postgres_data:
   chroma_data:
-  ollama_data:
   frontend_nm:    # isolates container node_modules from host

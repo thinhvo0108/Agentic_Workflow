@@ -189,7 +189,6 @@ class SupportAgent:
             base_url=settings.ollama.base_url,
             timeout=settings.ollama.timeout,
             temperature=0.0,
-            think=False,
         )
         self._confidence_chain: Runnable = _llm.with_structured_output(ConfidenceAssessment)
         self._generate_chain: Runnable = _llm.with_structured_output(SupportOutput)

@@ -1,14 +1,18 @@
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
+import asyncpg
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
 from app.api.routes import router
+from app.checkpoints.repository import CheckpointRepository
 from app.core.config import get_settings
 from app.core.exceptions import AgenticWorkflowError, ApprovalError
 from app.core.logging import configure_logging, get_logger
+from app.graph.nodes.checkpoint import set_repository
 from app.observability.metrics import configure_metrics
 from app.observability.middleware import RequestTracingMiddleware
 from app.observability.tracing import configure_tracing
@@ -24,10 +28,25 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     configure_tracing()
 
     from app.api.dependencies import init_workflow
-    init_workflow()
 
-    _logger.info("startup", env=settings.app.env, port=settings.app.port)
-    yield
+    # asyncpg pool → CheckpointRepository (custom audit records table)
+    pool = await asyncpg.create_pool(
+        settings.postgres.sync_dsn,
+        min_size=2,
+        max_size=settings.postgres.pool_size,
+    )
+    repo = CheckpointRepository(pool=pool)
+    await repo.setup()
+    set_repository(repo)
+
+    # AsyncPostgresSaver → LangGraph graph state persistence (survives restarts)
+    async with AsyncPostgresSaver.from_conn_string(settings.postgres.sync_dsn) as checkpointer:
+        await checkpointer.setup()
+        init_workflow(checkpointer)
+        _logger.info("startup", env=settings.app.env, port=settings.app.port)
+        yield
+
+    await pool.close()
     _logger.info("shutdown")
 
 

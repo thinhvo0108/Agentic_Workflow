@@ -17,7 +17,7 @@ class AppSettings(BaseSettings):
 
 class OllamaSettings(BaseSettings):
     base_url: str = "http://localhost:11434"
-    default_model: str = "qwen3:4b"
+    default_model: str = "llama3.2:latest"
     embedding_model: str = "nomic-embed-text"
     timeout: int = 120
 

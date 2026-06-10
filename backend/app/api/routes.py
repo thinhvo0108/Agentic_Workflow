@@ -31,10 +31,10 @@ from app.api.dependencies import (
     get_workflow,
     track_task,
 )
-from app.core.exceptions import ApprovalError
+from app.core.exceptions import ApprovalError, EmbeddingError, RetrievalError
 from app.core.logging import get_logger
 from app.graph.state import initial_state
-from app.schemas.requests import ApprovalRequest, WorkflowRequest
+from app.schemas.requests import ApprovalRequest, IngestRequest, WorkflowRequest
 from app.schemas.responses import (
     ApprovalResponse,
     Citation,
@@ -280,3 +280,41 @@ async def submit_approval(
         reviewer_id=request.reviewer_id,
         comment=request.comment,
     )
+
+
+# ── Ingest documents ───────────────────────────────────────────────────────────
+
+
+@router.post(
+    "/ingest",
+    status_code=status.HTTP_200_OK,
+    summary="Ingest documents into the knowledge base",
+)
+async def ingest_documents(request: IngestRequest) -> dict:
+    """Split, embed, and upsert documents into ChromaDB.
+
+    Re-ingesting the same source is safe — chunk IDs are deterministic so
+    existing entries are updated rather than duplicated.
+    """
+    from app.rag.ingestion import IngestionPipeline, IngestDocument
+
+    docs: list[IngestDocument] = [
+        IngestDocument(
+            content=d.content,
+            source=d.source,
+            metadata=d.metadata,
+        )
+        for d in request.documents
+    ]
+
+    try:
+        pipeline = IngestionPipeline()
+        chunk_count = await pipeline.ingest(docs)
+    except (EmbeddingError, RetrievalError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(exc),
+        )
+
+    _logger.info("ingest_complete", doc_count=len(docs), chunk_count=chunk_count)
+    return {"documents_ingested": len(docs), "chunks_stored": chunk_count}

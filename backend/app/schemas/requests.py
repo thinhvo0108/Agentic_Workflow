@@ -32,3 +32,18 @@ class ApprovalRequest(BaseModel):
     action: str = Field(pattern="^(approved|rejected)$")
     reviewer_id: str = Field(min_length=1, max_length=128)
     comment: str | None = Field(default=None, max_length=1024)
+
+
+class IngestDocumentRequest(BaseModel):
+    content: str = Field(min_length=1, max_length=100_000)
+    source: str = Field(min_length=1, max_length=256)
+    metadata: dict[str, str] = Field(default_factory=dict)
+
+    @field_validator("metadata")
+    @classmethod
+    def sanitize_metadata(cls, v: dict[str, str]) -> dict[str, str]:
+        return {k[:64]: val[:256] for k, val in v.items()}
+
+
+class IngestRequest(BaseModel):
+    documents: list[IngestDocumentRequest] = Field(min_length=1, max_length=100)

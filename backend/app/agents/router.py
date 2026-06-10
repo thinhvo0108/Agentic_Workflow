@@ -100,7 +100,6 @@ class RouterAgent:
             model=settings.ollama.default_model,
             base_url=settings.ollama.base_url,
             timeout=settings.ollama.timeout,
-            think=False,
         )
         # with_structured_output returns a Runnable that outputs a RouteOutput
         self._chain: Runnable = _llm.with_structured_output(RouteOutput)

@@ -88,7 +88,6 @@ class GroundednessEvaluator:
             base_url=settings.ollama.base_url,
             timeout=settings.ollama.timeout,
             temperature=0.0,
-            think=False,
         )
         self._chain: Runnable = _llm.with_structured_output(GroundednessEvaluation)
 
