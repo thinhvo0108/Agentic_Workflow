@@ -55,7 +55,7 @@ class WorkflowResponse(BaseModel):
 
 class WorkflowStatusResponse(BaseModel):
     session_id: str
-    status: Literal["running", "awaiting_approval", "approved", "rejected", "failed", "completed"]
+    status: Literal["running", "awaiting_approval", "approved", "rejected", "failed", "completed", "not_found"]
     current_node: str | None = None
     error: str | None = None
     created_at: datetime
