@@ -17,9 +17,9 @@ retrieval_confidence
     top-ranked document has the greatest influence.
 
 answer_confidence
-    Mean CrossEncoder rerank score of the documents fed to the generator.
-    High rerank scores indicate the retrieved context is closely relevant
-    to the query, which is a practical proxy for answer grounding.
+    Highest CrossEncoder rerank score among the documents fed to the generator.
+    Using the maximum reflects that one highly-relevant document is sufficient
+    for a strong answer — the mean unfairly penalises having additional context.
 
 overall_confidence
     Weighted linear combination:
@@ -59,7 +59,11 @@ def score_retrieval(docs: list[RetrievedDocument]) -> float:
 
 
 def score_answer(docs: list[RankedDocument]) -> float:
-    """Mean CrossEncoder rerank score of the context used for generation.
+    """Highest CrossEncoder rerank score among the context documents.
+
+    Using the maximum rather than the mean reflects that the answer quality
+    is bounded by the best available evidence — one highly-relevant document
+    is sufficient for a strong answer regardless of other lower-scored docs.
 
     Parameters
     ----------
@@ -73,7 +77,7 @@ def score_answer(docs: list[RankedDocument]) -> float:
     """
     if not docs:
         return 0.0
-    return _clamp(sum(d["rerank_score"] for d in docs) / len(docs))
+    return _clamp(max(d["rerank_score"] for d in docs))
 
 
 def score_overall(router: float, retrieval: float, answer: float) -> float:
