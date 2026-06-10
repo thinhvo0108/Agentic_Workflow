@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
@@ -39,14 +40,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     await repo.setup()
     set_repository(repo)
 
-    # Pre-warm the reranker model so the first query doesn't pay the load cost.
-    # bge-reranker-large is ~1 GB and takes 30-60 s on CPU; loading it here
-    # keeps the class-level cache warm after every uvicorn --reload cycle.
+    # Pre-warm the reranker in the background so startup doesn't block health
+    # checks.  The model loads concurrently; the first query that reaches the
+    # reranker node will wait if loading isn't done yet, but the server becomes
+    # healthy immediately.
     try:
         from app.rag.reranker import RerankerService
-        _logger.info("prewarming_reranker")
-        await RerankerService().warm_up()
-        _logger.info("reranker_ready")
+        _logger.info("prewarming_reranker_bg")
+        asyncio.create_task(RerankerService().warm_up())
     except Exception as exc:
         _logger.warning("reranker_prewarm_failed", error=str(exc))
 
