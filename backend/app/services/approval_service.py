@@ -62,7 +62,10 @@ def _derive_status(snapshot: Any | None) -> WorkflowStatus:
         return "rejected"
     if values.get("errors"):
         return "failed"
-    # Graph exited (e.g. router error → END) without writing final_response.
+    # step_count=0 means the initial checkpoint was written but no node has run
+    # yet (AsyncPostgresSaver commits the initial state before starting).
+    if not values.get("step_count"):
+        return "running"
     return "failed"
 
 

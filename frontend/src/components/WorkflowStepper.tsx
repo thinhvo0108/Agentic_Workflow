@@ -31,8 +31,9 @@ const STEPS: Step[] = [
   { nodes: ['retriever'],          label: 'Retrieving',   description: 'Fetching relevant documents' },
   { nodes: ['reranker'],           label: 'Reranking',    description: 'Scoring document relevance' },
   { nodes: ['generator'],          label: 'Generating',   description: 'Drafting response' },
-  { nodes: ['structured_output'],  label: 'Structuring',  description: 'Formatting output' },
-  { nodes: ['checkpoint'],         label: 'Checkpoint',   description: 'Saving progress' },
+  { nodes: ['structured_output'],  label: 'Structuring',   description: 'Formatting output' },
+  { nodes: ['groundedness'],       label: 'Groundedness',  description: 'Verifying answer claims' },
+  { nodes: ['checkpoint'],         label: 'Checkpoint',    description: 'Saving progress' },
   { nodes: ['human_approval'],     label: 'Review',       description: 'Awaiting human approval' },
   { nodes: ['final_response'],     label: 'Complete',     description: 'Response finalized' },
 ];
