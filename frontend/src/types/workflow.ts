@@ -64,6 +64,7 @@ export interface WorkflowResponse {
   citations: Citation[];
   route: RouteDecision;
   approval_status: ApprovalAction;
+  auto_approved: boolean;
   confidence: ConfidenceScores | null;
   groundedness: GroundednessResult | null;
   created_at: string;

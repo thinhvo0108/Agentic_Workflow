@@ -22,7 +22,7 @@ import {
   Textarea,
   VStack,
 } from '@chakra-ui/react';
-import { AttachmentIcon, CheckCircleIcon, CloseIcon } from '@chakra-ui/icons';
+import { AttachmentIcon, CheckCircleIcon, CloseIcon, WarningTwoIcon } from '@chakra-ui/icons';
 import { getWorkflowDraft } from '../api/workflow';
 import type { ApprovalAction, DraftResponse } from '../types/workflow';
 
@@ -132,6 +132,33 @@ export default function ApprovalPanel({ sessionId, query, onDecision }: Props) {
           </Badge>
         )}
       </HStack>
+
+      {/* ── Manual review reason ── */}
+      <Box bg="orange.50" border="1px solid" borderColor="orange.200" borderRadius="lg" p={4}>
+        <HStack spacing={3} align="start">
+          <WarningTwoIcon color="orange.400" mt={0.5} flexShrink={0} />
+          <VStack align="start" spacing={1}>
+            <Text fontSize="xs" fontWeight="bold" color="orange.700">
+              Manual review required
+            </Text>
+            {overallScore !== null ? (
+              <Text fontSize="xs" color="orange.600" lineHeight="tall">
+                Overall confidence{' '}
+                <Text as="span" fontWeight="bold" color="orange.700">
+                  {Math.round(overallScore * 100)}%
+                </Text>
+                {' '}is below the{' '}
+                <Text as="span" fontWeight="bold">70%</Text>
+                {' '}auto-approval threshold. Please review the response carefully before deciding.
+              </Text>
+            ) : (
+              <Text fontSize="xs" color="orange.600">
+                Confidence score is below the 70% auto-approval threshold. Loading details…
+              </Text>
+            )}
+          </VStack>
+        </HStack>
+      </Box>
 
       {/* ── Query ── */}
       <Box bg="purple.50" border="1px solid" borderColor="purple.200" borderRadius="lg" p={4}>

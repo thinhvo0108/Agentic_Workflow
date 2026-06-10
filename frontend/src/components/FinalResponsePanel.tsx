@@ -42,8 +42,15 @@ export default function FinalResponsePanel({ result }: Props) {
           <Badge colorScheme={route.color} variant="subtle" fontSize="xs" px={2} py={0.5} borderRadius="full">
             {route.label} Agent
           </Badge>
-          <Badge colorScheme="green" variant="subtle" fontSize="xs" px={2} py={0.5} borderRadius="full">
-            Approved
+          <Badge
+            colorScheme={result.auto_approved ? 'purple' : 'green'}
+            variant="subtle"
+            fontSize="xs"
+            px={2}
+            py={0.5}
+            borderRadius="full"
+          >
+            {result.auto_approved ? 'Auto-Approved' : 'Approved'}
           </Badge>
         </HStack>
       </HStack>

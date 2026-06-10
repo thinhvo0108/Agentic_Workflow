@@ -162,6 +162,7 @@ export default function WorkflowPage() {
               <WorkflowStepper
                 currentNode={status.current_node}
                 status={status.status}
+                autoApproved={result?.auto_approved}
               />
             ) : (
               <VStack spacing={4} align="stretch">

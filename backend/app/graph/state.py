@@ -128,6 +128,7 @@ class FinalResponse(TypedDict):
     citations: list[Citation]
     route: RouteDecision
     approval_status: Literal["approved"]  # only "approved" responses reach here
+    auto_approved: bool
     created_at: str  # ISO-8601 UTC
     confidence: NotRequired[ConfidenceScores | None]
     groundedness: NotRequired[GroundednessResult | None]
@@ -231,6 +232,7 @@ class AppState(TypedDict):
     # ── Set by approval flow ───────────────────────────────────────────────────
     approval_status: NotRequired[ApprovalStatus]
     approval_record: NotRequired[ApprovalRecord | None]
+    auto_approved: NotRequired[bool]
 
     # ── Set by final-response node ─────────────────────────────────────────────
     final_response: NotRequired[FinalResponse | None]
@@ -278,6 +280,7 @@ def initial_state(session_id: str, query: str, metadata: dict[str, str] | None =
         structured_output=None,
         approval_status="pending",
         approval_record=None,
+        auto_approved=False,
         final_response=None,
         errors=[],
         current_node=None,

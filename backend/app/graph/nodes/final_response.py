@@ -65,6 +65,7 @@ async def final_response_node(state: AppState) -> dict:
         citations=citations,
         route=state.get("route") or "research",
         approval_status="approved",
+        auto_approved=bool(state.get("auto_approved", False)),
         created_at=datetime.now(UTC).isoformat(),
         confidence=confidence,
         groundedness=state.get("groundedness"),

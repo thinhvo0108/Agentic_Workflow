@@ -226,6 +226,7 @@ async def get_workflow_result(
         citations=api_citations,
         route=final["route"],
         approval_status=final["approval_status"],
+        auto_approved=bool(final.get("auto_approved", False)),
         confidence=api_confidence,
         groundedness=api_groundedness,
     )

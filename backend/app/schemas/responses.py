@@ -61,6 +61,7 @@ class WorkflowResponse(BaseModel):
     citations: list[Citation] = Field(default_factory=list)
     route: Literal["research", "support"]
     approval_status: Literal["pending", "approved", "rejected"]
+    auto_approved: bool = False
     confidence: ConfidenceScores | None = None
     groundedness: GroundednessResult | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))

@@ -26,16 +26,17 @@ interface Step {
 }
 
 const STEPS: Step[] = [
-  { nodes: ['router'],             label: 'Routing',      description: 'Classifying query intent' },
-  { nodes: ['research', 'support'],label: 'Analyzing',    description: 'Specialized agent processing' },
-  { nodes: ['retriever'],          label: 'Retrieving',   description: 'Fetching relevant documents' },
-  { nodes: ['reranker'],           label: 'Reranking',    description: 'Scoring document relevance' },
-  { nodes: ['generator'],          label: 'Generating',   description: 'Drafting response' },
-  { nodes: ['structured_output'],  label: 'Structuring',   description: 'Formatting output' },
-  { nodes: ['groundedness'],       label: 'Groundedness',  description: 'Verifying answer claims' },
-  { nodes: ['checkpoint'],         label: 'Checkpoint',    description: 'Saving progress' },
-  { nodes: ['human_approval'],     label: 'Review',       description: 'Awaiting human approval' },
-  { nodes: ['final_response'],     label: 'Complete',     description: 'Response finalized' },
+  { nodes: ['router'],              label: 'Routing',      description: 'Classifying query intent' },
+  { nodes: ['research', 'support'], label: 'Analyzing',    description: 'Specialized agent processing' },
+  { nodes: ['retriever'],           label: 'Retrieving',   description: 'Fetching relevant documents' },
+  { nodes: ['reranker'],            label: 'Reranking',    description: 'Scoring document relevance' },
+  { nodes: ['generator'],           label: 'Generating',   description: 'Drafting response' },
+  { nodes: ['structured_output'],   label: 'Structuring',  description: 'Formatting output' },
+  { nodes: ['groundedness'],        label: 'Groundedness', description: 'Verifying answer claims' },
+  { nodes: ['checkpoint'],          label: 'Checkpoint',   description: 'Saving progress' },
+  { nodes: ['auto_approval_gate'],  label: 'Gate',         description: 'Checking confidence threshold' },
+  { nodes: ['human_approval'],      label: 'Review',       description: 'Awaiting approval' },
+  { nodes: ['final_response'],      label: 'Complete',     description: 'Response finalized' },
 ];
 
 function getActiveIndex(currentNode: string | null, status: WorkflowStatus): number {
@@ -46,12 +47,30 @@ function getActiveIndex(currentNode: string | null, status: WorkflowStatus): num
   return idx === -1 ? 0 : idx;
 }
 
+function resolveDescription(step: Step, status: WorkflowStatus, autoApproved?: boolean): string {
+  const isGate   = step.nodes.includes('auto_approval_gate');
+  const isReview = step.nodes.includes('human_approval');
+
+  if (status === 'awaiting_approval') {
+    if (isGate)   return 'Confidence below threshold';
+    if (isReview) return 'Manual review required';
+  }
+
+  if ((status === 'completed' || status === 'rejected') && autoApproved !== undefined) {
+    if (isGate)   return autoApproved ? 'Confidence ≥ 70%' : 'Confidence below threshold';
+    if (isReview) return autoApproved ? 'Auto-approved' : 'Approved by reviewer';
+  }
+
+  return step.description;
+}
+
 interface Props {
   currentNode: string | null;
   status: WorkflowStatus;
+  autoApproved?: boolean;
 }
 
-export default function WorkflowStepper({ currentNode, status }: Props) {
+export default function WorkflowStepper({ currentNode, status, autoApproved }: Props) {
   const activeIndex = getActiveIndex(currentNode, status);
   const isRunning = status === 'running';
 
@@ -62,7 +81,13 @@ export default function WorkflowStepper({ currentNode, status }: Props) {
       </Text>
       <Stepper index={activeIndex} orientation="vertical" colorScheme="brand" gap="0" size="sm">
         {STEPS.map((step, idx) => {
-          const isActive = idx === activeIndex && isRunning;
+          const isActive  = idx === activeIndex && isRunning;
+          const isGate    = step.nodes.includes('auto_approval_gate');
+          const isReview  = step.nodes.includes('human_approval');
+          const isPaused  = status === 'awaiting_approval';
+          const isResolved = (status === 'completed' || status === 'rejected') && autoApproved !== undefined;
+          const descriptionText = resolveDescription(step, status, autoApproved);
+
           return (
             <Step key={step.label}>
               <StepIndicator>
@@ -84,15 +109,32 @@ export default function WorkflowStepper({ currentNode, status }: Props) {
                 <StepTitle>
                   <Text
                     fontSize="sm"
-                    fontWeight={isActive ? 'bold' : 'medium'}
-                    color={isActive ? 'brand.600' : undefined}
+                    fontWeight={isActive || (isPaused && isReview) ? 'bold' : 'medium'}
+                    color={
+                      isActive                              ? 'brand.600'  :
+                      isPaused && isGate                    ? 'orange.500' :
+                      isPaused && isReview                  ? 'orange.600' :
+                      isResolved && isReview && autoApproved  ? 'purple.600' :
+                      isResolved && isReview && !autoApproved ? 'green.600'  :
+                      undefined
+                    }
                   >
                     {step.label}
                   </Text>
                 </StepTitle>
                 <StepDescription>
-                  <Text fontSize="xs" color="gray.500">
-                    {step.description}
+                  <Text
+                    fontSize="xs"
+                    color={
+                      isPaused  && (isGate || isReview)                   ? 'orange.500' :
+                      isResolved && isReview && autoApproved               ? 'purple.500' :
+                      isResolved && isReview && !autoApproved              ? 'green.600'  :
+                      isResolved && isGate  && autoApproved                ? 'purple.500' :
+                      'gray.500'
+                    }
+                    fontWeight={isPaused && isReview ? 'medium' : 'normal'}
+                  >
+                    {descriptionText}
                   </Text>
                 </StepDescription>
               </Box>
