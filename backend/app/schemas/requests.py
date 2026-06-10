@@ -48,3 +48,12 @@ class IngestDocumentRequest(BaseModel):
 
 class IngestRequest(BaseModel):
     documents: list[IngestDocumentRequest] = Field(min_length=1, max_length=100)
+    agent_type: str | None = Field(
+        default=None,
+        description=(
+            "Target agent collection: 'research', 'support', or any agent route string. "
+            "Documents are stored in 'knowledge_base_{agent_type}' so they are only "
+            "retrieved by that agent. Omit to write to the shared default collection."
+        ),
+        max_length=64,
+    )
