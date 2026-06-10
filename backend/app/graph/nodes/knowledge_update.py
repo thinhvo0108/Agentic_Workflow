@@ -44,7 +44,10 @@ async def knowledge_update_node(state: AppState) -> dict:
     content = f"{query}\n\n{answer}"
 
     try:
-        pipeline = IngestionPipeline()
+        from app.core.config import get_settings
+        route = state.get("route") or "shared"
+        collection_name = get_settings().chroma.collection_for(route)
+        pipeline = IngestionPipeline(collection_name=collection_name)
         chunk_count = await pipeline.ingest([
             IngestDocument(
                 content=content,
