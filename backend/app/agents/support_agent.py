@@ -226,7 +226,14 @@ class SupportAgent:
             raise ValueError("query must not be blank")
 
         assessment = await self._assess_confidence(query)
-        use_retrieval = _needs_retrieval(assessment) and bool(documents)
+
+        # Always prefer retrieval when high-scoring KB docs are available —
+        # especially important on repeat queries where an approved Q&A has been
+        # stored in the knowledge base (rerank_score will be ≥ 0.5 for a match).
+        has_relevant_docs = bool(documents) and any(
+            d.get("rerank_score", 0.0) >= 0.5 for d in documents
+        )
+        use_retrieval = (_needs_retrieval(assessment) or has_relevant_docs) and bool(documents)
 
         if use_retrieval:
             result = await self._generate_with_context(query, documents)
