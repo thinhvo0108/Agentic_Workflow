@@ -37,6 +37,7 @@ const STEPS: Step[] = [
   { nodes: ['auto_approval_gate'],  label: 'Gate',         description: 'Checking confidence threshold' },
   { nodes: ['human_approval'],      label: 'Review',       description: 'Awaiting approval' },
   { nodes: ['final_response'],      label: 'Complete',     description: 'Response finalized' },
+  { nodes: ['knowledge_update'],    label: 'KB Update',    description: 'Adding to knowledge base' },
 ];
 
 function getActiveIndex(currentNode: string | null, status: WorkflowStatus): number {
@@ -50,6 +51,7 @@ function getActiveIndex(currentNode: string | null, status: WorkflowStatus): num
 function resolveDescription(step: Step, status: WorkflowStatus, autoApproved?: boolean): string {
   const isGate   = step.nodes.includes('auto_approval_gate');
   const isReview = step.nodes.includes('human_approval');
+  const isKB     = step.nodes.includes('knowledge_update');
 
   if (status === 'awaiting_approval') {
     if (isGate)   return 'Confidence below threshold';
@@ -57,8 +59,9 @@ function resolveDescription(step: Step, status: WorkflowStatus, autoApproved?: b
   }
 
   if ((status === 'completed' || status === 'rejected') && autoApproved !== undefined) {
-    if (isGate)   return autoApproved ? 'Confidence ≥ 70%' : 'Confidence below threshold';
-    if (isReview) return autoApproved ? 'Auto-approved' : 'Approved by reviewer';
+    if (isGate)   return autoApproved ? 'Confidence ≥ 70%'          : 'Confidence below threshold';
+    if (isReview) return autoApproved ? 'Auto-approved'              : 'Approved by reviewer';
+    if (isKB)     return autoApproved ? 'Skipped — high confidence'  : 'Added to knowledge base';
   }
 
   return step.description;
@@ -81,10 +84,11 @@ export default function WorkflowStepper({ currentNode, status, autoApproved }: P
       </Text>
       <Stepper index={activeIndex} orientation="vertical" colorScheme="brand" gap="0" size="sm">
         {STEPS.map((step, idx) => {
-          const isActive  = idx === activeIndex && isRunning;
-          const isGate    = step.nodes.includes('auto_approval_gate');
-          const isReview  = step.nodes.includes('human_approval');
-          const isPaused  = status === 'awaiting_approval';
+          const isActive   = idx === activeIndex && isRunning;
+          const isGate     = step.nodes.includes('auto_approval_gate');
+          const isReview   = step.nodes.includes('human_approval');
+          const isKB       = step.nodes.includes('knowledge_update');
+          const isPaused   = status === 'awaiting_approval';
           const isResolved = (status === 'completed' || status === 'rejected') && autoApproved !== undefined;
           const descriptionText = resolveDescription(step, status, autoApproved);
 
@@ -111,11 +115,12 @@ export default function WorkflowStepper({ currentNode, status, autoApproved }: P
                     fontSize="sm"
                     fontWeight={isActive || (isPaused && isReview) ? 'bold' : 'medium'}
                     color={
-                      isActive                              ? 'brand.600'  :
-                      isPaused && isGate                    ? 'orange.500' :
-                      isPaused && isReview                  ? 'orange.600' :
+                      isActive                                ? 'brand.600'  :
+                      isPaused && isGate                      ? 'orange.500' :
+                      isPaused && isReview                    ? 'orange.600' :
                       isResolved && isReview && autoApproved  ? 'purple.600' :
                       isResolved && isReview && !autoApproved ? 'green.600'  :
+                      isResolved && isKB     && !autoApproved ? 'green.600'  :
                       undefined
                     }
                   >
@@ -126,10 +131,11 @@ export default function WorkflowStepper({ currentNode, status, autoApproved }: P
                   <Text
                     fontSize="xs"
                     color={
-                      isPaused  && (isGate || isReview)                   ? 'orange.500' :
-                      isResolved && isReview && autoApproved               ? 'purple.500' :
-                      isResolved && isReview && !autoApproved              ? 'green.600'  :
-                      isResolved && isGate  && autoApproved                ? 'purple.500' :
+                      isPaused   && (isGate || isReview)     ? 'orange.500' :
+                      isResolved && isReview && autoApproved  ? 'purple.500' :
+                      isResolved && isReview && !autoApproved ? 'green.600'  :
+                      isResolved && isGate   && autoApproved  ? 'purple.500' :
+                      isResolved && isKB     && !autoApproved ? 'green.600'  :
                       'gray.500'
                     }
                     fontWeight={isPaused && isReview ? 'medium' : 'normal'}

@@ -29,6 +29,17 @@ def _route_decision(state: AppState) -> str:
     return route if route in ("research", "support") else END
 
 
+def _post_final_decision(state: AppState) -> str:
+    """Conditional edge after final_response.
+
+    Manual approval → knowledge_update (ingest approved Q&A into ChromaDB).
+    Auto approval   → END (KB already has good coverage for high-confidence queries).
+    """
+    if not state.get("auto_approved", False):
+        return "knowledge_update"
+    return END
+
+
 def _pre_approval_decision(state: AppState) -> str:
     """Conditional edge after auto_approval_gate.
 
@@ -63,6 +74,7 @@ def build_workflow() -> StateGraph:
     from app.graph.nodes.generator import generator_node
     from app.graph.nodes.groundedness import groundedness_node
     from app.graph.nodes.human_approval import human_approval_node
+    from app.graph.nodes.knowledge_update import knowledge_update_node
     from app.graph.nodes.reranker import reranker_node
     from app.graph.nodes.research import research_node
     from app.graph.nodes.retriever import retriever_node
@@ -86,6 +98,7 @@ def build_workflow() -> StateGraph:
     graph.add_node("auto_approval_gate",  observe_node("auto_approval_gate",  auto_approval_gate_node))
     graph.add_node("human_approval",      observe_node("human_approval",      human_approval_node))
     graph.add_node("final_response",      observe_node("final_response",      final_response_node))
+    graph.add_node("knowledge_update",    observe_node("knowledge_update",    knowledge_update_node))
 
     graph.add_edge(START, "router")
     graph.add_conditional_edges(
@@ -111,7 +124,12 @@ def build_workflow() -> StateGraph:
         _approval_decision,
         {"final_response": "final_response", "human_approval": "human_approval", END: END},
     )
-    graph.add_edge("final_response", END)
+    graph.add_conditional_edges(
+        "final_response",
+        _post_final_decision,
+        {"knowledge_update": "knowledge_update", END: END},
+    )
+    graph.add_edge("knowledge_update", END)
 
     return graph
 

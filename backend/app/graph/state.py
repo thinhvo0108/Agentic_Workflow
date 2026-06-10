@@ -235,6 +235,7 @@ class AppState(TypedDict):
     approval_status: NotRequired[ApprovalStatus]
     approval_record: NotRequired[ApprovalRecord | None]
     auto_approved: NotRequired[bool]
+    knowledge_updated: NotRequired[bool]
 
     # ── Set by final-response node ─────────────────────────────────────────────
     final_response: NotRequired[FinalResponse | None]
@@ -283,6 +284,7 @@ def initial_state(session_id: str, query: str, metadata: dict[str, str] | None =
         approval_status="pending",
         approval_record=None,
         auto_approved=False,
+        knowledge_updated=False,
         final_response=None,
         errors=[],
         current_node=None,

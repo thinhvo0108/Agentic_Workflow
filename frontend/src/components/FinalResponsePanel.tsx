@@ -13,7 +13,7 @@ import {
   Text,
   VStack,
 } from '@chakra-ui/react';
-import { CheckCircleIcon, CheckIcon } from '@chakra-ui/icons';
+import { CheckCircleIcon, CheckIcon, InfoIcon } from '@chakra-ui/icons';
 import type { WorkflowResponse } from '../types/workflow';
 import ConfidenceStats from './ConfidenceStats';
 import DocumentsPanel from './DocumentsPanel';
@@ -52,7 +52,7 @@ export default function FinalResponsePanel({ result }: Props) {
             groundedness={result.groundedness}
           />
 
-          {/* Manual approval attribution */}
+          {/* Manual approval attribution + KB update notice */}
           {!result.auto_approved && result.reviewer_id && (
             <Box
               mt={3}
@@ -63,20 +63,42 @@ export default function FinalResponsePanel({ result }: Props) {
               px={4}
               py={3}
             >
-              <HStack spacing={2} align="start">
-                <CheckIcon color="green.500" mt="3px" flexShrink={0} />
-                <VStack align="start" spacing={0.5}>
-                  <Text fontSize="xs" color="green.700">
-                    Reviewed and approved by{' '}
-                    <Text as="span" fontWeight="bold">{result.reviewer_id}</Text>
-                  </Text>
-                  {result.reviewer_comment && (
-                    <Text fontSize="xs" color="green.600" fontStyle="italic">
-                      "{result.reviewer_comment}"
+              <VStack align="stretch" spacing={2}>
+                <HStack spacing={2} align="start">
+                  <CheckIcon color="green.500" mt="3px" flexShrink={0} />
+                  <VStack align="start" spacing={0.5}>
+                    <Text fontSize="xs" color="green.700">
+                      Reviewed and approved by{' '}
+                      <Text as="span" fontWeight="bold">{result.reviewer_id}</Text>
                     </Text>
-                  )}
-                </VStack>
-              </HStack>
+                    {result.reviewer_comment && (
+                      <Text fontSize="xs" color="green.600" fontStyle="italic">
+                        "{result.reviewer_comment}"
+                      </Text>
+                    )}
+                  </VStack>
+                </HStack>
+
+                {result.knowledge_updated && (
+                  <HStack
+                    spacing={2}
+                    align="start"
+                    pt={2}
+                    borderTop="1px solid"
+                    borderColor="green.200"
+                  >
+                    <InfoIcon color="blue.400" mt="3px" flexShrink={0} />
+                    <VStack align="start" spacing={0}>
+                      <Text fontSize="xs" fontWeight="semibold" color="blue.700">
+                        Answer added to knowledge base
+                      </Text>
+                      <Text fontSize="xs" color="blue.600">
+                        Similar queries may auto-approve next time.
+                      </Text>
+                    </VStack>
+                  </HStack>
+                )}
+              </VStack>
             </Box>
           )}
         </Box>

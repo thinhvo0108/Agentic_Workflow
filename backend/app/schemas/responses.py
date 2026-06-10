@@ -62,6 +62,7 @@ class WorkflowResponse(BaseModel):
     route: Literal["research", "support"]
     approval_status: Literal["pending", "approved", "rejected"]
     auto_approved: bool = False
+    knowledge_updated: bool = False
     reviewer_id: str | None = None
     reviewer_comment: str | None = None
     confidence: ConfidenceScores | None = None

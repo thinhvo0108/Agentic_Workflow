@@ -173,6 +173,9 @@ async def get_workflow_result(
             detail=f"No approved result for session '{session_id}'",
         )
 
+    full_state = await approval_svc.get_state(session_id)
+    knowledge_updated = bool((full_state or {}).get("knowledge_updated", False))
+
     api_citations = [
         Citation(
             document_id=c.get("document_id", ""),
@@ -227,6 +230,7 @@ async def get_workflow_result(
         route=final["route"],
         approval_status=final["approval_status"],
         auto_approved=bool(final.get("auto_approved", False)),
+        knowledge_updated=knowledge_updated,
         reviewer_id=final.get("reviewer_id"),
         reviewer_comment=final.get("reviewer_comment"),
         confidence=api_confidence,
