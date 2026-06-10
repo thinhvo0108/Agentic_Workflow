@@ -415,7 +415,11 @@ async def ingest_documents(request: IngestRequest) -> dict:
     ]
 
     try:
-        pipeline = IngestionPipeline()
+        from app.core.config import get_settings
+        collection_name: str | None = None
+        if request.agent_type:
+            collection_name = get_settings().chroma.collection_for(request.agent_type)
+        pipeline = IngestionPipeline(collection_name=collection_name)
         chunk_count = await pipeline.ingest(docs)
     except (EmbeddingError, RetrievalError) as exc:
         raise HTTPException(
