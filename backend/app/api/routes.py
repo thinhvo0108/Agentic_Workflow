@@ -39,6 +39,7 @@ from app.schemas.responses import (
     ApprovalResponse,
     Citation,
     ConfidenceScores,
+    DraftResponse,
     EvaluatedClaim,
     GroundednessResult,
     WorkflowResponse,
@@ -225,6 +226,93 @@ async def get_workflow_result(
         citations=api_citations,
         route=final["route"],
         approval_status=final["approval_status"],
+        confidence=api_confidence,
+        groundedness=api_groundedness,
+    )
+
+
+# ── Get draft for approval review ─────────────────────────────────────────────
+
+
+@router.get(
+    "/workflow/{session_id}/draft",
+    response_model=DraftResponse,
+    summary="Retrieve the draft response pending human approval",
+)
+async def get_workflow_draft(
+    session_id: str,
+    approval_svc: ApprovalService = Depends(get_approval_service),
+) -> DraftResponse:
+    """Return the structured output available for the approver to review.
+
+    Only available when status = awaiting_approval.  Returns 404 otherwise.
+    """
+    state = await approval_svc.get_state(session_id)
+    if state is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Session '{session_id}' not found")
+
+    so = state.get("structured_output")
+    if so is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No draft available for session '{session_id}'",
+        )
+
+    citations = [
+        Citation(
+            document_id=c.get("document_id", ""),
+            source=c.get("source", ""),
+            excerpt=c.get("excerpt", ""),
+            relevance_score=float(c.get("rerank_score", 0.0)),
+        )
+        for c in (so.get("citations") or [])
+    ]
+
+    conf_data = state.get("confidence") or {}
+    router_conf = float(state.get("router_confidence") or 0.0)
+    retrieval_conf = float(state.get("retrieval_confidence") or 0.0)
+    answer_conf = float(state.get("answer_confidence") or 0.0)
+    from app.services.confidence import score_overall
+    api_confidence = ConfidenceScores(
+        router=router_conf,
+        retrieval=retrieval_conf,
+        answer=answer_conf,
+        overall=score_overall(router_conf, retrieval_conf, answer_conf),
+    ) if any([router_conf, retrieval_conf, answer_conf]) else None
+
+    gnd_data = state.get("groundedness")
+    api_groundedness: GroundednessResult | None = None
+    if gnd_data:
+        api_groundedness = GroundednessResult(
+            groundedness_score=float(gnd_data.get("groundedness_score", 0.0)),
+            supported_claims=[
+                EvaluatedClaim(
+                    claim=c["claim"],
+                    supported=c["supported"],
+                    source_document_ids=c.get("source_document_ids", []),
+                    reasoning=c["reasoning"],
+                )
+                for c in (gnd_data.get("supported_claims") or [])
+            ],
+            unsupported_claims=[
+                EvaluatedClaim(
+                    claim=c["claim"],
+                    supported=c["supported"],
+                    source_document_ids=c.get("source_document_ids", []),
+                    reasoning=c["reasoning"],
+                )
+                for c in (gnd_data.get("unsupported_claims") or [])
+            ],
+            evaluated_at=gnd_data.get("evaluated_at", ""),
+        )
+
+    return DraftResponse(
+        session_id=session_id,
+        query=state.get("query", ""),
+        route=state.get("route") or "research",
+        summary=so.get("summary", ""),
+        answer=so.get("answer", ""),
+        citations=citations,
         confidence=api_confidence,
         groundedness=api_groundedness,
     )

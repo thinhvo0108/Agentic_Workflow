@@ -25,6 +25,38 @@ export interface WorkflowStatusResponse {
   updated_at: string;
 }
 
+export interface ConfidenceScores {
+  router: number;
+  retrieval: number;
+  answer: number;
+  overall: number;
+}
+
+export interface EvaluatedClaim {
+  claim: string;
+  supported: boolean;
+  source_document_ids: string[];
+  reasoning: string;
+}
+
+export interface GroundednessResult {
+  groundedness_score: number;
+  supported_claims: EvaluatedClaim[];
+  unsupported_claims: EvaluatedClaim[];
+  evaluated_at: string;
+}
+
+export interface DraftResponse {
+  session_id: string;
+  query: string;
+  route: RouteDecision;
+  summary: string;
+  answer: string;
+  citations: Citation[];
+  confidence: ConfidenceScores | null;
+  groundedness: GroundednessResult | null;
+}
+
 export interface WorkflowResponse {
   session_id: string;
   summary: string;
@@ -32,6 +64,8 @@ export interface WorkflowResponse {
   citations: Citation[];
   route: RouteDecision;
   approval_status: ApprovalAction;
+  confidence: ConfidenceScores | null;
+  groundedness: GroundednessResult | null;
   created_at: string;
 }
 

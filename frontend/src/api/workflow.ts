@@ -2,6 +2,7 @@ import { apiFetch } from './client';
 import type {
   ApprovalAction,
   ApprovalResponse,
+  DraftResponse,
   WorkflowResponse,
   WorkflowStatusResponse,
 } from '../types/workflow';
@@ -19,6 +20,10 @@ export async function getWorkflowStatus(sessionId: string): Promise<WorkflowStat
 
 export async function getWorkflowResult(sessionId: string): Promise<WorkflowResponse> {
   return apiFetch<WorkflowResponse>(`/workflow/${sessionId}/result`);
+}
+
+export async function getWorkflowDraft(sessionId: string): Promise<DraftResponse> {
+  return apiFetch<DraftResponse>(`/workflow/${sessionId}/draft`);
 }
 
 export async function submitApproval(

@@ -41,6 +41,19 @@ class GroundednessResult(BaseModel):
     evaluated_at: str = Field(description="ISO-8601 UTC timestamp of the evaluation")
 
 
+class DraftResponse(BaseModel):
+    """Structured output available for human review at the approval gate."""
+
+    session_id: str
+    query: str
+    route: Literal["research", "support"]
+    summary: str
+    answer: str
+    citations: list[Citation] = Field(default_factory=list)
+    confidence: ConfidenceScores | None = None
+    groundedness: GroundednessResult | None = None
+
+
 class WorkflowResponse(BaseModel):
     session_id: str
     summary: str
