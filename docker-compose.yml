@@ -88,11 +88,11 @@ services:
     volumes:
       - ollama_data:/root/.ollama  # persists pulled models across restarts
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:11434/api/tags || exit 1"]
+      test: ["CMD", "ollama", "list"]
       interval: 10s
-      timeout: 5s
-      retries: 12
-      start_period: 30s
+      timeout: 10s
+      retries: 20
+      start_period: 60s
     restart: unless-stopped
     # ── NVIDIA GPU (Linux only) ─────────────────────────────────────────────────
     # Uncomment the block below if you have an NVIDIA GPU and nvidia-container-toolkit:
