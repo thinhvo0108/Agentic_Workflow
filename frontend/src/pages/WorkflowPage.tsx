@@ -49,15 +49,19 @@ export default function WorkflowPage() {
   const [result, setResult] = useState<WorkflowResponse | null>(null);
   const [resultError, setResultError] = useState<string | null>(null);
 
-  // Fetch the final result once the workflow completes
+  // Fetch the final result once the workflow completes.
+  // Guard: skip if result already loaded or status is not yet confirmed completed.
   useEffect(() => {
-    if (status?.status !== 'completed' || !sessionId) return;
+    if (status?.status !== 'completed' || !sessionId || result !== null) return;
+    let cancelled = false;
     getWorkflowResult(sessionId)
-      .then(setResult)
-      .catch((err: unknown) =>
-        setResultError(err instanceof Error ? err.message : 'Failed to load result.'),
-      );
-  }, [sessionId, status?.status]);
+      .then((data) => { if (!cancelled) setResult(data); })
+      .catch((err: unknown) => {
+        if (!cancelled)
+          setResultError(err instanceof Error ? err.message : 'Failed to load result.');
+      });
+    return () => { cancelled = true; };
+  }, [sessionId, status?.status, result]);
 
   const handleApproval = async (
     action: ApprovalAction,

@@ -15,6 +15,8 @@ Design
   touching Ollama or HuggingFace.
 """
 
+import re
+
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from langchain_core.language_models import BaseChatModel
@@ -132,6 +134,41 @@ def _override_citation_scores(
     return output.model_copy(update={"citations": patched})
 
 
+def _backfill_citations(
+    output: ResearchOutput,
+    documents: list[RankedDocument],
+) -> ResearchOutput:
+    """Recover citations when the LLM left the citations array empty.
+
+    Smaller models (e.g. llama3.2) reliably write [1], [2] inline in the
+    answer but often forget to populate the citations JSON field.  This
+    function scans the answer for [N] patterns and maps them back to the
+    documents list so the API always returns usable citation data.
+
+    Only runs when citations is empty — if the model filled it in, we trust it.
+    """
+    if output.citations or not documents:
+        return output
+
+    cited_indices: list[int] = sorted(
+        {int(m.group(1)) - 1 for m in re.finditer(r'\[(\d+)\]', output.answer)
+         if 0 <= int(m.group(1)) - 1 < len(documents)}
+    )
+    if not cited_indices:
+        return output
+
+    backfilled = [
+        CitationOutput(
+            document_id=documents[i]["id"],
+            source=documents[i]["source"],
+            excerpt=documents[i]["content"][:300],
+            rerank_score=documents[i]["rerank_score"],
+        )
+        for i in cited_indices
+    ]
+    return output.model_copy(update={"citations": backfilled})
+
+
 # ── Agent ──────────────────────────────────────────────────────────────────────
 
 
@@ -200,6 +237,7 @@ class ResearchAgent:
             )
 
         result = _override_citation_scores(result, documents)
+        result = _backfill_citations(result, documents)
 
         _logger.info(
             "research_agent_generated",

@@ -62,7 +62,8 @@ def _derive_status(snapshot: Any | None) -> WorkflowStatus:
         return "rejected"
     if values.get("errors"):
         return "failed"
-    return "completed"
+    # Graph exited (e.g. router error → END) without writing final_response.
+    return "failed"
 
 
 class ApprovalService:

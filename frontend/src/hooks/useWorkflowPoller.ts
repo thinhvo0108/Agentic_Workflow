@@ -25,6 +25,13 @@ export function useWorkflowPoller(sessionId: string) {
     }
   };
 
+  // Reset status when sessionId changes so a stale "completed" from a previous
+  // session never triggers an immediate /result fetch on a new session.
+  useEffect(() => {
+    setStatus(null);
+    setFetchError(null);
+  }, [sessionId]);
+
   useEffect(() => {
     let cancelled = false;
 

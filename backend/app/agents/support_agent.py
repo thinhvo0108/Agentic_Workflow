@@ -42,6 +42,7 @@ from pydantic import BaseModel, Field
 
 from app.agents.research_agent import (
     ResearchOutput,
+    _backfill_citations,
     _build_context,
     _override_citation_scores,
 )
@@ -230,6 +231,7 @@ class SupportAgent:
         if use_retrieval:
             result = await self._generate_with_context(query, documents)
             result = _override_citation_scores(result, documents)  # type: ignore[arg-type]
+            result = _backfill_citations(result, documents)  # type: ignore[arg-type]
         else:
             result = await self._generate_direct(query)
 
