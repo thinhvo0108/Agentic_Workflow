@@ -31,6 +31,7 @@ export async function submitApproval(
   action: ApprovalAction,
   reviewerId: string,
   comment?: string,
+  editedAnswer?: string,
 ): Promise<ApprovalResponse> {
   return apiFetch<ApprovalResponse>(`/workflow/${sessionId}/approve`, {
     method: 'POST',
@@ -39,6 +40,7 @@ export async function submitApproval(
       action,
       reviewer_id: reviewerId,
       comment: comment ?? null,
+      edited_answer: editedAnswer ?? null,
     }),
   });
 }

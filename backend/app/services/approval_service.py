@@ -114,6 +114,7 @@ class ApprovalService:
         action: ApprovalStatus,
         reviewer_id: str,
         comment: str | None = None,
+        edited_answer: str | None = None,
     ) -> None:
         """Inject an approval decision and resume the workflow.
 
@@ -159,11 +160,17 @@ class ApprovalService:
         if comment is not None:
             record["comment"] = comment
 
+        state_update: dict = {"approval_status": action, "approval_record": record}
+
+        # If the reviewer supplied an edited answer, overwrite it in structured_output
+        # so that final_response_node picks up the reviewer's version.
+        if edited_answer is not None and action == "approved":
+            existing_so = dict(snapshot.values.get("structured_output") or {})
+            existing_so["answer"] = edited_answer
+            state_update["structured_output"] = existing_so
+
         # Inject decision into state, then resume.
-        await self._workflow.aupdate_state(
-            config,
-            {"approval_status": action, "approval_record": record},
-        )
+        await self._workflow.aupdate_state(config, state_update)
         await self._workflow.ainvoke(None, config)
 
         _logger.info(

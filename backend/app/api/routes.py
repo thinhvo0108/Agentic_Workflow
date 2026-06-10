@@ -349,6 +349,7 @@ async def submit_approval(
             action=request.action,  # type: ignore[arg-type]
             reviewer_id=request.reviewer_id,
             comment=request.comment,
+            edited_answer=request.edited_answer,
         )
     except ApprovalError as exc:
         raise HTTPException(

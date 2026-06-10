@@ -53,7 +53,7 @@ function ScoreBar({ label, value }: { label: string; value: number }) {
 interface Props {
   sessionId: string;
   query: string;
-  onDecision: (action: ApprovalAction, reviewerId: string, comment?: string) => Promise<void>;
+  onDecision: (action: ApprovalAction, reviewerId: string, comment?: string, editedAnswer?: string) => Promise<void>;
 }
 
 export default function ApprovalPanel({ sessionId, query, onDecision }: Props) {
@@ -61,6 +61,7 @@ export default function ApprovalPanel({ sessionId, query, onDecision }: Props) {
   const [draftLoading, setDraftLoading] = useState(true);
   const [draftError, setDraftError]     = useState<string | null>(null);
 
+  const [editedAnswer, setEditedAnswer]   = useState('');
   const [reviewerId, setReviewerId]       = useState('');
   const [comment, setComment]             = useState('');
   const [isLoading, setIsLoading]         = useState(false);
@@ -72,7 +73,13 @@ export default function ApprovalPanel({ sessionId, query, onDecision }: Props) {
     setDraftLoading(true);
     setDraftError(null);
     getWorkflowDraft(sessionId)
-      .then((d) => { if (!cancelled) { setDraft(d); setDraftLoading(false); } })
+      .then((d) => {
+        if (!cancelled) {
+          setDraft(d);
+          setEditedAnswer(d.answer);
+          setDraftLoading(false);
+        }
+      })
       .catch((err: unknown) => {
         if (!cancelled) {
           setDraftError(err instanceof Error ? err.message : 'Failed to load draft.');
@@ -88,7 +95,12 @@ export default function ApprovalPanel({ sessionId, query, onDecision }: Props) {
     setIsLoading(true);
     setPendingAction(action);
     try {
-      await onDecision(action, reviewerId.trim(), comment.trim() || undefined);
+      await onDecision(
+        action,
+        reviewerId.trim(),
+        comment.trim() || undefined,
+        action === 'approved' ? editedAnswer.trim() || undefined : undefined,
+      );
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Approval failed. Please try again.');
       setIsLoading(false);
@@ -163,16 +175,33 @@ export default function ApprovalPanel({ sessionId, query, onDecision }: Props) {
             </CardBody>
           </Card>
 
-          {/* Full answer (scrollable) */}
+          {/* Editable answer — pre-populated with the generated answer; changes apply on approve */}
           <Box>
-            <Text fontSize="2xs" fontWeight="bold" textTransform="uppercase" color="gray.400" letterSpacing="wider" mb={2}>
-              Full Answer
-            </Text>
-            <Box bg="white" border="1px solid" borderColor="gray.200" borderRadius="lg" p={4} maxH="220px" overflowY="auto">
-              <Text fontSize="sm" color="gray.700" lineHeight="1.8" whiteSpace="pre-wrap">
-                {draft.answer}
+            <HStack justify="space-between" mb={2}>
+              <Text fontSize="2xs" fontWeight="bold" textTransform="uppercase" color="gray.400" letterSpacing="wider">
+                Final Answer
               </Text>
-            </Box>
+              <Text fontSize="2xs" color="gray.400">
+                editable · changes apply on approve · {editedAnswer.length} chars
+              </Text>
+            </HStack>
+            <Textarea
+              value={editedAnswer}
+              onChange={(e) => setEditedAnswer(e.target.value)}
+              size="sm"
+              minH="180px"
+              resize="vertical"
+              focusBorderColor="brand.500"
+              bg="white"
+              border="1px solid"
+              borderColor="gray.200"
+              borderRadius="lg"
+              fontSize="sm"
+              lineHeight="1.8"
+              color="gray.700"
+              isDisabled={isLoading}
+              placeholder="The final answer to deliver…"
+            />
           </Box>
 
           {/* Citations */}

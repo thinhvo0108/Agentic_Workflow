@@ -69,8 +69,9 @@ export default function WorkflowPage() {
     action: ApprovalAction,
     reviewerId: string,
     comment?: string,
+    editedAnswer?: string,
   ) => {
-    await submitApproval(sessionId ?? '', action, reviewerId, comment);
+    await submitApproval(sessionId ?? '', action, reviewerId, comment, editedAnswer);
     refetch();
   };
 

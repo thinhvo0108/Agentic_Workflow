@@ -32,6 +32,7 @@ class ApprovalRequest(BaseModel):
     action: str = Field(pattern="^(approved|rejected)$")
     reviewer_id: str = Field(min_length=1, max_length=128)
     comment: str | None = Field(default=None, max_length=1024)
+    edited_answer: str | None = Field(default=None, max_length=16_384)
 
 
 class IngestDocumentRequest(BaseModel):
