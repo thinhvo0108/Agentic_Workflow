@@ -37,9 +37,11 @@ async def knowledge_update_node(state: AppState) -> dict:
     session_id = state["session_id"]
     reviewer_id = final.get("reviewer_id") or "human"
 
-    # Format as a self-contained Q&A document so the retriever can match
-    # both question and answer content.
-    content = f"Question: {query}\n\nAnswer: {answer}"
+    # Store as plain knowledge-base prose.  Avoid "Question:/Answer:" labels —
+    # those cause the LLM to transcribe the content verbatim rather than cite it,
+    # leaving the citations array empty.  The query line still gives the vector
+    # store enough signal to match semantically similar future queries.
+    content = f"{query}\n\n{answer}"
 
     try:
         pipeline = IngestionPipeline()

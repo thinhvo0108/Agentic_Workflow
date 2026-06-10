@@ -140,22 +140,42 @@ def _backfill_citations(
 ) -> ResearchOutput:
     """Recover citations when the LLM left the citations array empty.
 
-    Smaller models (e.g. llama3.2) reliably write [1], [2] inline in the
-    answer but often forget to populate the citations JSON field.  This
-    function scans the answer for [N] patterns and maps them back to the
-    documents list so the API always returns usable citation data.
+    Smaller models reliably write inline markers in the answer text but often
+    forget to populate the citations JSON field.  Two marker styles are handled:
+      [N]      — positional index (e.g. llama3.2 / qwen3 small)
+      [doc-id] — actual document ID as shown in the context header
 
     Only runs when citations is empty — if the model filled it in, we trust it.
     """
     if output.citations or not documents:
         return output
 
-    cited_indices: list[int] = sorted(
-        {int(m.group(1)) - 1 for m in re.finditer(r'\[(\d+)\]', output.answer)
-         if 0 <= int(m.group(1)) - 1 < len(documents)}
-    )
+    # [N] positional citations
+    numeric_indices: set[int] = {
+        int(m.group(1)) - 1
+        for m in re.finditer(r'\[(\d+)\]', output.answer)
+        if 0 <= int(m.group(1)) - 1 < len(documents)
+    }
+
+    # [doc-id] citations — match exact document IDs from the context
+    doc_id_to_idx = {doc["id"]: i for i, doc in enumerate(documents)}
+    doc_id_indices: set[int] = {
+        idx
+        for doc_id, idx in doc_id_to_idx.items()
+        if f"[{doc_id}]" in output.answer
+    }
+
+    cited_indices = sorted(numeric_indices | doc_id_indices)
+
     if not cited_indices:
-        return output
+        # No inline markers found — fall back to all retrieved documents unless
+        # the model explicitly said it has no information (would be misleading).
+        _no_info = ("do not contain", "not enough information", "cannot answer",
+                    "no information", "insufficient information", "not mentioned")
+        lower = output.answer.lower()
+        if any(p in lower for p in _no_info):
+            return output
+        cited_indices = list(range(len(documents)))
 
     backfilled = [
         CitationOutput(
