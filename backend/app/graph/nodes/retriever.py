@@ -29,7 +29,7 @@ async def retriever_node(state: AppState) -> dict:
 
     try:
         service = RetrieverService()
-        docs = await service.retrieve(state["query"])
+        docs = await service.retrieve(state["query"], agent_type=state.get("route"))
     except (EmbeddingError, RetrievalError) as exc:
         _logger.error(
             "retriever_node_failed",

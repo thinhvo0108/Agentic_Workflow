@@ -74,7 +74,10 @@ class RetrieverService:
         self._embeddings = embedding_service or EmbeddingService()
 
     async def retrieve(
-        self, query: str, top_k: int | None = None
+        self,
+        query: str,
+        top_k: int | None = None,
+        agent_type: str | None = None,
     ) -> list[RetrievedDocument]:
         """Return up to *top_k* documents most relevant to *query*.
 
@@ -84,6 +87,11 @@ class RetrieverService:
             Natural-language search query.
         top_k:
             Maximum number of results.  Defaults to settings.rag.retrieval_top_k.
+        agent_type:
+            When provided, restricts results to documents tagged with this
+            agent type or "shared".  Documents without an agent_type tag
+            (e.g. ingested before this field was introduced) are excluded.
+            Pass None to query the full collection.
 
         Raises
         ------
@@ -99,12 +107,17 @@ class RetrieverService:
         except Exception as exc:
             raise EmbeddingError(f"Unexpected error embedding query: {exc}") from exc
 
+        where: dict | None = None
+        if agent_type:
+            where = {"agent_type": {"$in": [agent_type, "shared"]}}
+
         try:
             collection = await self._store.get_collection()
             results = await asyncio.to_thread(
                 collection.query,
                 query_embeddings=[query_vector],
                 n_results=k,
+                where=where,
                 include=["documents", "metadatas", "distances"],
             )
         except RetrievalError:
@@ -118,5 +131,6 @@ class RetrieverService:
             query_len=len(query),
             requested=k,
             returned=len(docs),
+            agent_type=agent_type,
         )
         return docs

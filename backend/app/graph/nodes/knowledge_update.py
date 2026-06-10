@@ -45,12 +45,14 @@ async def knowledge_update_node(state: AppState) -> dict:
 
     try:
         pipeline = IngestionPipeline()
+        route = state.get("route") or "shared"
         chunk_count = await pipeline.ingest([
             IngestDocument(
                 content=content,
                 source=f"approved_qa:{session_id}",
                 metadata={
                     "type": "approved_qa",
+                    "agent_type": route,
                     "session_id": session_id,
                     "reviewer_id": reviewer_id,
                     "query": query[:256],
