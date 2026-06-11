@@ -51,6 +51,7 @@ export default function FinalResponsePanel({ result }: Props) {
           <ConfidenceStats
             confidence={result.confidence}
             groundedness={result.groundedness}
+            contextPrecision={result.context_precision}
           />
 
           {/* Manual approval attribution + KB update notice */}

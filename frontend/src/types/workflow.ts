@@ -46,6 +46,19 @@ export interface GroundednessResult {
   evaluated_at: string;
 }
 
+export interface DocumentRelevanceVerdict {
+  document_id: string;
+  is_relevant: boolean;
+  reasoning: string;
+}
+
+export interface ContextPrecisionResult {
+  context_precision_score: number;
+  relevant_documents: DocumentRelevanceVerdict[];
+  irrelevant_documents: DocumentRelevanceVerdict[];
+  evaluated_at: string;
+}
+
 export interface WebSearchResult {
   title: string;
   link: string;
@@ -61,6 +74,7 @@ export interface DraftResponse {
   citations: Citation[];
   confidence: ConfidenceScores | null;
   groundedness: GroundednessResult | null;
+  context_precision: ContextPrecisionResult | null;
   judge_result: JudgeResult | null;
   web_search_results: WebSearchResult[];
 }
@@ -90,6 +104,7 @@ export interface WorkflowMetrics {
   error_rate: number;
   hallucination_rate: number | null;
   judge_score: number | null;
+  context_precision_score: number | null;
   step_count: number;
 }
 
@@ -106,6 +121,7 @@ export interface WorkflowResponse {
   reviewer_comment: string | null;
   confidence: ConfidenceScores | null;
   groundedness: GroundednessResult | null;
+  context_precision: ContextPrecisionResult | null;
   judge_result: JudgeResult | null;
   metrics: WorkflowMetrics | null;
   created_at: string;

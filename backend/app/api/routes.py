@@ -40,6 +40,8 @@ from app.schemas.responses import (
     ApprovalResponse,
     Citation,
     ConfidenceScores,
+    ContextPrecisionResult,
+    DocumentRelevanceVerdict,
     DraftResponse,
     EvaluatedClaim,
     GroundednessResult,
@@ -239,11 +241,28 @@ async def get_workflow_result(
             evaluated_at=jd.get("evaluated_at", ""),
         )
 
+    api_context_precision: ContextPrecisionResult | None = None
+    cp_data = final.get("context_precision")
+    if cp_data:
+        api_context_precision = ContextPrecisionResult(
+            context_precision_score=float(cp_data.get("context_precision_score", 0.0)),
+            relevant_documents=[
+                DocumentRelevanceVerdict(**v)
+                for v in (cp_data.get("relevant_documents") or [])
+            ],
+            irrelevant_documents=[
+                DocumentRelevanceVerdict(**v)
+                for v in (cp_data.get("irrelevant_documents") or [])
+            ],
+            evaluated_at=cp_data.get("evaluated_at", ""),
+        )
+
     api_metrics: WorkflowMetrics | None = None
     md = final.get("metrics")
     if md:
         _hr = md.get("hallucination_rate")
         _js = md.get("judge_score")
+        _cp = md.get("context_precision_score")
         api_metrics = WorkflowMetrics(
             started_at=md.get("started_at", ""),
             completed_at=md.get("completed_at", ""),
@@ -253,6 +272,7 @@ async def get_workflow_result(
             error_rate=float(md.get("error_rate", 0.0)),
             hallucination_rate=float(_hr) if _hr is not None else None,
             judge_score=float(_js) if _js is not None else None,
+            context_precision_score=float(_cp) if _cp is not None else None,
             step_count=int(md.get("step_count", 0)),
         )
 
@@ -269,6 +289,7 @@ async def get_workflow_result(
         reviewer_comment=final.get("reviewer_comment"),
         confidence=api_confidence,
         groundedness=api_groundedness,
+        context_precision=api_context_precision,
         judge_result=api_judge,
         metrics=api_metrics,
     )
@@ -378,6 +399,22 @@ async def get_workflow_draft(
             evaluated_at=jd.get("evaluated_at", ""),
         )
 
+    draft_cp: ContextPrecisionResult | None = None
+    cp_state = state.get("context_precision")
+    if cp_state:
+        draft_cp = ContextPrecisionResult(
+            context_precision_score=float(cp_state.get("context_precision_score", 0.0)),
+            relevant_documents=[
+                DocumentRelevanceVerdict(**v)
+                for v in (cp_state.get("relevant_documents") or [])
+            ],
+            irrelevant_documents=[
+                DocumentRelevanceVerdict(**v)
+                for v in (cp_state.get("irrelevant_documents") or [])
+            ],
+            evaluated_at=cp_state.get("evaluated_at", ""),
+        )
+
     return DraftResponse(
         session_id=session_id,
         query=state.get("query", ""),
@@ -387,6 +424,7 @@ async def get_workflow_draft(
         citations=citations,
         confidence=api_confidence,
         groundedness=api_groundedness,
+        context_precision=draft_cp,
         judge_result=api_judge,
         web_search_results=web_search_results,
     )

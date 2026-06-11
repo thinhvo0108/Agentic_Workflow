@@ -37,6 +37,9 @@ def _compute_metrics(state: AppState, completed_at: datetime) -> WorkflowMetrics
     judge = state.get("judge_result")
     judge_score: float | None = float(judge["overall_score"]) if judge else None
 
+    cp = state.get("context_precision")
+    context_precision_score: float | None = float(cp["context_precision_score"]) if cp else None
+
     return WorkflowMetrics(
         started_at=started_at_str,
         completed_at=completed_at.isoformat(),
@@ -46,6 +49,7 @@ def _compute_metrics(state: AppState, completed_at: datetime) -> WorkflowMetrics
         error_rate=round(error_count / step_count, 4),
         hallucination_rate=hallucination_rate,
         judge_score=judge_score,
+        context_precision_score=context_precision_score,
         step_count=step_count,
     )
 
@@ -113,6 +117,7 @@ async def final_response_node(state: AppState) -> dict[str, Any]:
         created_at=now.isoformat(),
         confidence=confidence,
         groundedness=state.get("groundedness"),
+        context_precision=state.get("context_precision"),
         judge_result=state.get("judge_result"),
         metrics=metrics,
     )

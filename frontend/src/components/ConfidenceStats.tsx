@@ -9,7 +9,7 @@ import {
   Text,
   VStack,
 } from '@chakra-ui/react';
-import type { ConfidenceScores, GroundednessResult } from '../types/workflow';
+import type { ConfidenceScores, ContextPrecisionResult, GroundednessResult } from '../types/workflow';
 
 export function scoreColor(score: number): string {
   if (score >= 0.75) return 'green';
@@ -33,14 +33,17 @@ function ScoreBar({ label, value }: { label: string; value: number }) {
 interface Props {
   confidence: ConfidenceScores | null;
   groundedness: GroundednessResult | null;
+  contextPrecision?: ContextPrecisionResult | null;
 }
 
-export default function ConfidenceStats({ confidence, groundedness }: Props) {
-  const overallScore = confidence?.overall ?? null;
-  const groundScore  = groundedness?.groundedness_score ?? null;
-  const unsupported  = groundedness?.unsupported_claims ?? [];
+export default function ConfidenceStats({ confidence, groundedness, contextPrecision }: Props) {
+  const overallScore   = confidence?.overall ?? null;
+  const groundScore    = groundedness?.groundedness_score ?? null;
+  const precisionScore = contextPrecision?.context_precision_score ?? null;
+  const unsupported    = groundedness?.unsupported_claims ?? [];
+  const irrelevant     = contextPrecision?.irrelevant_documents ?? [];
 
-  if (overallScore === null && groundScore === null) return null;
+  if (overallScore === null && groundScore === null && precisionScore === null) return null;
 
   return (
     <VStack align="stretch" spacing={3}>
@@ -88,6 +91,23 @@ export default function ConfidenceStats({ confidence, groundedness }: Props) {
           </VStack>
         )}
 
+        {precisionScore !== null && (
+          <VStack spacing={1} align="center" minW="72px">
+            <CircularProgress
+              value={Math.round(precisionScore * 100)}
+              color={`${scoreColor(precisionScore)}.400`}
+              trackColor="gray.100"
+              size="56px"
+              thickness="10px"
+            >
+              <CircularProgressLabel fontSize="xs" fontWeight="bold">
+                {Math.round(precisionScore * 100)}%
+              </CircularProgressLabel>
+            </CircularProgress>
+            <Text fontSize="2xs" color="gray.500" textAlign="center">Ctx Precision</Text>
+          </VStack>
+        )}
+
         {confidence && (
           <VStack align="stretch" spacing={2} flex={1} minW="160px">
             <ScoreBar label="Routing"   value={confidence.router} />
@@ -107,6 +127,22 @@ export default function ConfidenceStats({ confidence, groundedness }: Props) {
             <VStack align="start" spacing={1}>
               {unsupported.map((c, i) => (
                 <Text key={i} fontSize="xs" color="orange.800">· {c.claim}</Text>
+              ))}
+            </VStack>
+          </Box>
+        </Alert>
+      )}
+
+      {irrelevant.length > 0 && (
+        <Alert status="info" borderRadius="md" fontSize="sm" alignItems="start">
+          <AlertIcon mt={0.5} />
+          <Box>
+            <Text fontWeight="semibold" mb={1}>
+              {irrelevant.length} irrelevant doc{irrelevant.length > 1 ? 's' : ''} retrieved
+            </Text>
+            <VStack align="start" spacing={1}>
+              {irrelevant.map((v, i) => (
+                <Text key={i} fontSize="xs" color="blue.800">· {v.document_id}: {v.reasoning}</Text>
               ))}
             </VStack>
           </Box>

@@ -116,6 +116,31 @@ class JudgeResult(TypedDict):
     evaluated_at: str  # ISO-8601 UTC
 
 
+# ── Context precision evaluation ─────────────────────────────────────────────
+
+
+class DocumentRelevanceVerdict(TypedDict):
+    """Relevance verdict for a single retrieved document (context precision)."""
+
+    document_id: str
+    is_relevant: bool
+    reasoning: str
+
+
+class ContextPrecisionResult(TypedDict):
+    """Aggregated context precision evaluation produced by the context_eval node.
+
+    context_precision_score = relevant_docs / total_docs  (0.0 when no docs).
+    Measures whether retrieval fetched documents that are actually useful —
+    the RAGAS Context Precision pillar.
+    """
+
+    context_precision_score: float
+    relevant_documents: list[DocumentRelevanceVerdict]
+    irrelevant_documents: list[DocumentRelevanceVerdict]
+    evaluated_at: str  # ISO-8601 UTC
+
+
 # ── Groundedness evaluation ───────────────────────────────────────────────────
 
 
@@ -165,6 +190,7 @@ class WorkflowMetrics(TypedDict):
     error_rate: float
     hallucination_rate: float | None
     judge_score: float | None
+    context_precision_score: float | None
     step_count: int
 
 
@@ -204,6 +230,7 @@ class FinalResponse(TypedDict):
     created_at: str  # ISO-8601 UTC
     confidence: NotRequired[ConfidenceScores | None]
     groundedness: NotRequired[GroundednessResult | None]
+    context_precision: NotRequired[ContextPrecisionResult | None]
     judge_result: NotRequired[JudgeResult | None]
     metrics: NotRequired[WorkflowMetrics | None]
 
@@ -332,6 +359,9 @@ class AppState(TypedDict):
     # ── Groundedness evaluation (written by groundedness node) ─────────────────
     groundedness: NotRequired[GroundednessResult | None]
 
+    # ── Context precision evaluation (written by context_eval node) ────────────
+    context_precision: NotRequired[ContextPrecisionResult | None]
+
     # ── LLM-as-a-judge evaluation (written by llm_judge node) ─────────────────
     judge_result: NotRequired[JudgeResult | None]
 
@@ -382,6 +412,7 @@ def initial_state(session_id: str, query: str, metadata: dict[str, str] | None =
         retrieval_confidence=None,
         answer_confidence=None,
         groundedness=None,
+        context_precision=None,
         judge_result=None,
         metrics=None,
         total_tokens=0,

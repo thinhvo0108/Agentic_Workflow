@@ -278,14 +278,14 @@ class TestAutoApprovalGateVeto:
 
     @pytest.mark.asyncio
     async def test_boundary_judge_exactly_at_threshold(self):
-        # 0.70 exactly should pass
-        state = _state(judge_result=_judge_result(0.70))
+        # 0.60 exactly should pass (JUDGE_THRESHOLD = 0.60)
+        state = _state(judge_result=_judge_result(0.60))
         result = await auto_approval_gate_node(state)
         assert result["approval_status"] == "approved"
 
     @pytest.mark.asyncio
     async def test_boundary_judge_just_below_threshold(self):
-        # 0.699 should fail
-        state = _state(judge_result=_judge_result(0.699))
+        # 0.599 should fail (JUDGE_THRESHOLD = 0.60)
+        state = _state(judge_result=_judge_result(0.599))
         result = await auto_approval_gate_node(state)
         assert result.get("approval_status") != "approved"

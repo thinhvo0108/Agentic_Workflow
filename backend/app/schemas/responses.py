@@ -35,6 +35,10 @@ class WorkflowMetrics(BaseModel):
         default=None,
         description="LLM-as-a-judge overall score; None if judge did not run",
     )
+    context_precision_score: float | None = Field(
+        default=None,
+        description="Fraction of retrieved docs relevant to the query; None if context_eval did not run",
+    )
     step_count: int = Field(ge=0, description="Total nodes executed")
 
 
@@ -104,6 +108,27 @@ class GroundednessResult(BaseModel):
     evaluated_at: str = Field(description="ISO-8601 UTC timestamp of the evaluation")
 
 
+class DocumentRelevanceVerdict(BaseModel):
+    """Relevance verdict for a single retrieved document."""
+
+    document_id: str
+    is_relevant: bool
+    reasoning: str
+
+
+class ContextPrecisionResult(BaseModel):
+    """Context precision evaluation — RAGAS Context Precision pillar."""
+
+    context_precision_score: float = Field(
+        ge=0.0,
+        le=1.0,
+        description="Fraction of retrieved docs relevant to the query: relevant / total",
+    )
+    relevant_documents: list[DocumentRelevanceVerdict] = Field(default_factory=list)
+    irrelevant_documents: list[DocumentRelevanceVerdict] = Field(default_factory=list)
+    evaluated_at: str = Field(description="ISO-8601 UTC timestamp of the evaluation")
+
+
 class WebSearchResult(BaseModel):
     """A single DuckDuckGo result fetched to assist the human reviewer."""
 
@@ -123,6 +148,7 @@ class DraftResponse(BaseModel):
     citations: list[Citation] = Field(default_factory=list)
     confidence: ConfidenceScores | None = None
     groundedness: GroundednessResult | None = None
+    context_precision: ContextPrecisionResult | None = None
     judge_result: JudgeResult | None = None
     web_search_results: list[WebSearchResult] = Field(default_factory=list)
 
@@ -140,6 +166,7 @@ class WorkflowResponse(BaseModel):
     reviewer_comment: str | None = None
     confidence: ConfidenceScores | None = None
     groundedness: GroundednessResult | None = None
+    context_precision: ContextPrecisionResult | None = None
     judge_result: JudgeResult | None = None
     metrics: WorkflowMetrics | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))

@@ -87,8 +87,10 @@ function RateBar({ label, rate, tooltip, invert = false }: RateBarProps) {
   }
 
   const pct = Math.round(rate * 100);
+  // Default: lower is better (hallucination rate, error rate)
+  // invert=true: higher is better (context precision)
   const colorScheme = invert
-    ? (pct === 0 ? 'green' : pct <= 10 ? 'yellow' : 'red')
+    ? (pct >= 75 ? 'green' : pct >= 40 ? 'orange' : 'red')
     : (pct === 0 ? 'green' : pct <= 10 ? 'yellow' : 'red');
 
   return (
@@ -224,6 +226,17 @@ export default function WorkflowMetricsPanel({ metrics }: Props) {
                 ? `${Math.round((metrics.hallucination_rate) * 100)}% of factual claims in the answer were not supported by source documents (lower is better)`
                 : 'Groundedness evaluation did not run for this request'
             }
+          />
+          <Divider />
+          <RateBar
+            label="Context Precision"
+            rate={metrics.context_precision_score ?? null}
+            tooltip={
+              metrics.context_precision_score !== null && metrics.context_precision_score !== undefined
+                ? `${Math.round(metrics.context_precision_score * 100)}% of retrieved documents were relevant to the query (higher is better)`
+                : 'Context precision evaluation did not run for this request'
+            }
+            invert
           />
           <Divider />
           <RateBar
