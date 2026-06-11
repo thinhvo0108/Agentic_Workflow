@@ -74,6 +74,11 @@ Research  Support         (path marker nodes — set route, advance counter)
 └──────┬───────┘
        │
        ▼
+┌───────────┐
+│ LLM Judge │  Scores faithfulness, relevance, completeness, coherence
+└─────┬─────┘
+      │
+      ▼
 ┌────────────┐
 │ Checkpoint │  Persists full state to PostgreSQL
 └─────┬──────┘
@@ -211,13 +216,30 @@ Using count-based scoring rather than asking the LLM for a float avoids numeric 
 
 ---
 
-### 8. Checkpoint
+### 8. LLM Judge
+
+After groundedness scoring, a second LLM-as-a-judge pass evaluates the answer holistically across four weighted dimensions:
+
+| Dimension | Weight | What it measures |
+|---|---|---|
+| Faithfulness | 40% | Are all claims consistent with the source documents? |
+| Relevance | 30% | Does the answer actually address the user's question? |
+| Completeness | 20% | Are the key aspects of the question covered? |
+| Coherence | 10% | Is the response clear and well-structured? |
+
+The weighted average becomes `overall_score` (0–1). Scores ≥ 0.70 get a `recommendation` of `"auto_approve"`; below that, `"needs_review"`. This recommendation feeds directly into the Auto-Approval Gate alongside the confidence scores.
+
+The judge is intentionally the last quality gate before the checkpoint — by the time it runs, the answer is already validated by the groundedness node, so the judge focuses on semantic quality rather than factual support.
+
+---
+
+### 9. Checkpoint
 
 Persists the full `AppState` to PostgreSQL via LangGraph's `AsyncPostgresSaver`. Every field is serialised as plain JSON, enabling complete state reconstruction after a restart or crash. This is also what makes the `interrupt_before=["human_approval"]` pause durable — the graph can resume from any machine.
 
 ---
 
-### 9. Auto-Approval Gate
+### 10. Auto-Approval Gate
 
 Computes the overall confidence score as a weighted combination of the three signals:
 
@@ -231,7 +253,7 @@ If `overall ≥ 0.70`, the response is auto-approved and flows directly to **Fin
 
 ---
 
-### 10. Web Search *(manual path only)*
+### 11. Web Search *(manual path only)*
 
 Fetches up to 5 DuckDuckGo results for the original query using `ddgs` (via `asyncio.to_thread` to avoid blocking the event loop). Results are stored in state and surfaced in the approval panel so the reviewer has live web context alongside the AI-generated draft.
 
@@ -239,7 +261,7 @@ This node runs before the `interrupt_before` pause so results are already in the
 
 ---
 
-### 11. Human Approval *(manual path only)*
+### 12. Human Approval *(manual path only)*
 
 LangGraph pauses at this node (`interrupt_before=["human_approval"]`) and waits for a `POST /api/v1/workflow/{id}/approve` call. The reviewer can:
 
@@ -250,13 +272,13 @@ The reviewer ID and optional comment are stored in state for audit purposes.
 
 ---
 
-### 12. Final Response
+### 13. Final Response
 
 Assembles the `FinalResponse` combining the approved answer, confidence scores, groundedness evaluation, citations, and reviewer metadata. This is what `GET /api/v1/workflow/{id}/result` returns.
 
 ---
 
-### 13. Knowledge Update *(manual approval path only)*
+### 14. Knowledge Update *(manual approval path only)*
 
 After a human approves a response, the approved Q&A pair is embedded and stored back into the **same agent-specific collection** that served the original retrieval:
 
@@ -281,6 +303,24 @@ This plain-prose format avoids "Question:/Answer:" labels that cause the LLM to 
 4. Overall confidence rises above 0.70 → the response is **auto-approved**, bypassing human review
 
 The system becomes progressively less reliant on human review as approved Q&A accumulates in each agent's collection.
+
+---
+
+## LLM-as-a-Judge: Autonomous by Default, Human as Last Resort
+
+The design philosophy of this workflow is **autonomous first** — human review is expensive, slow, and doesn't scale. The goal is to approve as many responses as possible without human involvement, while ensuring that the quality bar for auto-approved responses is high enough to trust.
+
+Two complementary evaluators work in tandem to achieve this:
+
+**Groundedness** (step 7) is objective and signal-based: it checks whether each individual factual claim in the answer can be traced back to a source document. A score of 1.0 means every claim is supported; 0.0 means none are. This catches hallucination at the claim level.
+
+**LLM Judge** (step 8) is semantic and holistic: it asks whether the answer is *good* — faithful to the sources, relevant to the question, complete, and coherent. No amount of claim-level checking can tell you whether the answer actually addresses what the user asked. The judge closes that gap.
+
+Together, these two signals feed the **Auto-Approval Gate** alongside the retrieval and routing confidence scores. When all signals are strong, the workflow delivers the answer immediately with no human in the loop. This covers the majority of queries once the knowledge base has reasonable coverage.
+
+Human review is only triggered when the system is genuinely uncertain — low retrieval confidence, a poor judge score, or a groundedness score that reveals unsupported claims. In that case, the reviewer sees the draft answer, the confidence breakdown, the groundedness evaluation, the judge critique, and live web search results — everything needed to make an informed decision in seconds. Once approved, the Q&A pair is stored back in the knowledge base, so the same question auto-approves next time.
+
+The result is a feedback loop: the more queries get approved, the more the knowledge base improves, the higher the confidence on future queries, and the less often humans are needed.
 
 ---
 
