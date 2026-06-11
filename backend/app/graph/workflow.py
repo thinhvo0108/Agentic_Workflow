@@ -76,6 +76,7 @@ def build_workflow() -> StateGraph:  # type: ignore[type-arg]
     from app.graph.nodes.groundedness import groundedness_node
     from app.graph.nodes.human_approval import human_approval_node
     from app.graph.nodes.knowledge_update import knowledge_update_node
+    from app.graph.nodes.llm_judge import llm_judge_node
     from app.graph.nodes.reranker import reranker_node
     from app.graph.nodes.research import research_node
     from app.graph.nodes.retriever import retriever_node
@@ -96,6 +97,7 @@ def build_workflow() -> StateGraph:  # type: ignore[type-arg]
     graph.add_node("generator", observe_node("generator", generator_node))  # type: ignore[call-overload]
     graph.add_node("structured_output", observe_node("structured_output", structured_output_node))  # type: ignore[call-overload]
     graph.add_node("groundedness", observe_node("groundedness", groundedness_node))  # type: ignore[call-overload]
+    graph.add_node("llm_judge", observe_node("llm_judge", llm_judge_node))  # type: ignore[call-overload]
     graph.add_node("checkpoint", observe_node("checkpoint", checkpoint_node))  # type: ignore[call-overload]
     graph.add_node(  # type: ignore[call-overload]
         "auto_approval_gate", observe_node("auto_approval_gate", auto_approval_gate_node)
@@ -117,7 +119,8 @@ def build_workflow() -> StateGraph:  # type: ignore[type-arg]
     graph.add_edge("reranker", "generator")
     graph.add_edge("generator", "structured_output")
     graph.add_edge("structured_output", "groundedness")
-    graph.add_edge("groundedness", "checkpoint")
+    graph.add_edge("groundedness", "llm_judge")
+    graph.add_edge("llm_judge", "checkpoint")
     graph.add_edge("checkpoint", "auto_approval_gate")
     graph.add_conditional_edges(
         "auto_approval_gate",

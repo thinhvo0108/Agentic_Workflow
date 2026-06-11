@@ -4,6 +4,33 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 
+class JudgeDimensionScore(BaseModel):
+    """Score and reasoning for one LLM-as-a-judge evaluation dimension."""
+
+    score: float = Field(ge=0.0, le=1.0)
+    reasoning: str
+
+
+class JudgeResult(BaseModel):
+    """LLM-as-a-judge evaluation of the generated answer quality.
+
+    overall_score is a deterministic weighted average:
+        faithfulness 40%, relevance 30%, completeness 20%, coherence 10%
+
+    recommendation is derived from overall_score:
+        "auto_approve" (>= 0.70) | "needs_review" (< 0.70)
+    """
+
+    faithfulness: JudgeDimensionScore
+    relevance: JudgeDimensionScore
+    completeness: JudgeDimensionScore
+    coherence: JudgeDimensionScore
+    overall_score: float = Field(ge=0.0, le=1.0)
+    recommendation: Literal["auto_approve", "needs_review"]
+    critique: str = Field(description="2-3 sentence holistic evaluation from the judge")
+    evaluated_at: str = Field(description="ISO-8601 UTC timestamp of the evaluation")
+
+
 class Citation(BaseModel):
     document_id: str
     source: str
@@ -69,6 +96,7 @@ class DraftResponse(BaseModel):
     citations: list[Citation] = Field(default_factory=list)
     confidence: ConfidenceScores | None = None
     groundedness: GroundednessResult | None = None
+    judge_result: JudgeResult | None = None
     web_search_results: list[WebSearchResult] = Field(default_factory=list)
 
 
@@ -85,6 +113,7 @@ class WorkflowResponse(BaseModel):
     reviewer_comment: str | None = None
     confidence: ConfidenceScores | None = None
     groundedness: GroundednessResult | None = None
+    judge_result: JudgeResult | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 

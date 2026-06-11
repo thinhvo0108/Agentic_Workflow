@@ -83,6 +83,39 @@ class StructuredOutput(TypedDict):
     citations: list[Citation]
 
 
+# ── LLM-as-a-judge evaluation ─────────────────────────────────────────────────
+
+
+class JudgeDimensionScore(TypedDict):
+    """Score and reasoning for a single judge evaluation dimension."""
+
+    score: float
+    reasoning: str
+
+
+class JudgeResult(TypedDict):
+    """Aggregated LLM-as-a-judge evaluation produced by the llm_judge node.
+
+    overall_score is computed deterministically from four weighted dimensions:
+        faithfulness  0.40  (hallucination risk)
+        relevance     0.30  (answers the actual query)
+        completeness  0.20  (covers key aspects)
+        coherence     0.10  (clarity and structure)
+
+    recommendation is derived from overall_score: "auto_approve" (>= 0.70)
+    or "needs_review" (< 0.70).
+    """
+
+    faithfulness: JudgeDimensionScore
+    relevance: JudgeDimensionScore
+    completeness: JudgeDimensionScore
+    coherence: JudgeDimensionScore
+    overall_score: float
+    recommendation: str  # "auto_approve" | "needs_review"
+    critique: str
+    evaluated_at: str  # ISO-8601 UTC
+
+
 # ── Groundedness evaluation ───────────────────────────────────────────────────
 
 
@@ -144,6 +177,7 @@ class FinalResponse(TypedDict):
     created_at: str  # ISO-8601 UTC
     confidence: NotRequired[ConfidenceScores | None]
     groundedness: NotRequired[GroundednessResult | None]
+    judge_result: NotRequired[JudgeResult | None]
 
 
 # ── Error record ──────────────────────────────────────────────────────────────
@@ -264,6 +298,9 @@ class AppState(TypedDict):
     # ── Groundedness evaluation (written by groundedness node) ─────────────────
     groundedness: NotRequired[GroundednessResult | None]
 
+    # ── LLM-as-a-judge evaluation (written by llm_judge node) ─────────────────
+    judge_result: NotRequired[JudgeResult | None]
+
     # ── Workflow tracking ──────────────────────────────────────────────────────
     current_node: NotRequired[str | None]
     step_count: NotRequired[int]
@@ -308,4 +345,5 @@ def initial_state(session_id: str, query: str, metadata: dict[str, str] | None =
         retrieval_confidence=None,
         answer_confidence=None,
         groundedness=None,
+        judge_result=None,
     )

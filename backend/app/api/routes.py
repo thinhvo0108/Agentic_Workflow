@@ -43,6 +43,8 @@ from app.schemas.responses import (
     DraftResponse,
     EvaluatedClaim,
     GroundednessResult,
+    JudgeDimensionScore,
+    JudgeResult,
     WebSearchResult,
     WorkflowResponse,
     WorkflowStatusResponse,
@@ -222,6 +224,20 @@ async def get_workflow_result(
             evaluated_at=gnd_data.get("evaluated_at", ""),
         )
 
+    api_judge: JudgeResult | None = None
+    jd = final.get("judge_result")
+    if jd:
+        api_judge = JudgeResult(
+            faithfulness=JudgeDimensionScore(**jd["faithfulness"]),
+            relevance=JudgeDimensionScore(**jd["relevance"]),
+            completeness=JudgeDimensionScore(**jd["completeness"]),
+            coherence=JudgeDimensionScore(**jd["coherence"]),
+            overall_score=float(jd["overall_score"]),
+            recommendation=jd["recommendation"],
+            critique=jd.get("critique", ""),
+            evaluated_at=jd.get("evaluated_at", ""),
+        )
+
     return WorkflowResponse(
         session_id=final["session_id"],
         summary=final["summary"],
@@ -235,6 +251,7 @@ async def get_workflow_result(
         reviewer_comment=final.get("reviewer_comment"),
         confidence=api_confidence,
         groundedness=api_groundedness,
+        judge_result=api_judge,
     )
 
 
@@ -328,6 +345,20 @@ async def get_workflow_draft(
         for r in (state.get("web_search_results") or [])
     ]
 
+    api_judge: JudgeResult | None = None
+    jd = state.get("judge_result")
+    if jd:
+        api_judge = JudgeResult(
+            faithfulness=JudgeDimensionScore(**jd["faithfulness"]),
+            relevance=JudgeDimensionScore(**jd["relevance"]),
+            completeness=JudgeDimensionScore(**jd["completeness"]),
+            coherence=JudgeDimensionScore(**jd["coherence"]),
+            overall_score=float(jd["overall_score"]),
+            recommendation=jd["recommendation"],
+            critique=jd.get("critique", ""),
+            evaluated_at=jd.get("evaluated_at", ""),
+        )
+
     return DraftResponse(
         session_id=session_id,
         query=state.get("query", ""),
@@ -337,6 +368,7 @@ async def get_workflow_draft(
         citations=citations,
         confidence=api_confidence,
         groundedness=api_groundedness,
+        judge_result=api_judge,
         web_search_results=web_search_results,
     )
 
