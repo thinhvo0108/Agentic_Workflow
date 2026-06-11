@@ -33,6 +33,7 @@ const STEPS: Step[] = [
   { nodes: ['generator'],           label: 'Generating',   description: 'Drafting response' },
   { nodes: ['structured_output'],   label: 'Structuring',  description: 'Formatting output' },
   { nodes: ['groundedness'],        label: 'Groundedness', description: 'Verifying answer claims' },
+  { nodes: ['llm_judge'],           label: 'LLM Judge',    description: 'Evaluating answer quality' },
   { nodes: ['checkpoint'],          label: 'Checkpoint',   description: 'Saving progress' },
   { nodes: ['auto_approval_gate'],  label: 'Gate',         description: 'Checking confidence threshold' },
   { nodes: ['web_search'],          label: 'Web Search',   description: 'Fetching reference from web' },
@@ -54,6 +55,7 @@ function resolveDescription(step: Step, status: WorkflowStatus, autoApproved?: b
   const isWebSearch = step.nodes.includes('web_search');
   const isReview    = step.nodes.includes('human_approval');
   const isKB        = step.nodes.includes('knowledge_update');
+  const isJudge     = step.nodes.includes('llm_judge');
 
   if (status === 'awaiting_approval') {
     if (isGate)      return 'Confidence below threshold';
@@ -62,6 +64,7 @@ function resolveDescription(step: Step, status: WorkflowStatus, autoApproved?: b
   }
 
   if ((status === 'completed' || status === 'rejected') && autoApproved !== undefined) {
+    if (isJudge)     return autoApproved ? 'Recommended auto-approve'  : 'Recommended review';
     if (isGate)      return autoApproved ? 'Confidence ≥ 70%'         : 'Confidence below threshold';
     if (isWebSearch) return autoApproved ? 'Skipped — auto-approved'  : 'Web context fetched';
     if (isReview)    return autoApproved ? 'Auto-approved'             : 'Approved by reviewer';
