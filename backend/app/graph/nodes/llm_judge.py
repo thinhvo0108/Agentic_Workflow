@@ -22,6 +22,7 @@ from typing import Any
 from app.core.logging import get_logger
 from app.evaluation.judge import LLMJudge
 from app.graph.state import AppState, JudgeDimensionScore, JudgeResult, make_error
+from app.observability.token_tracker import TokenCounterCallback, instrumented_llm
 
 _logger = get_logger(__name__)
 _NODE = "llm_judge"
@@ -60,7 +61,8 @@ async def llm_judge_node(state: AppState) -> dict[str, Any]:
     documents = state.get("reranked_documents") or []
 
     try:
-        judge = LLMJudge()
+        counter = TokenCounterCallback()
+        judge = LLMJudge(llm=instrumented_llm(counter))
         evaluation, overall_score = await judge.evaluate(
             query=state["query"],
             answer=answer,
@@ -117,4 +119,5 @@ async def llm_judge_node(state: AppState) -> dict[str, Any]:
         "judge_result": result,
         "current_node": _NODE,
         "step_count": step,
+        "total_tokens": counter.total,
     }

@@ -141,6 +141,33 @@ class GroundednessResult(TypedDict):
     evaluated_at: str  # ISO-8601 UTC
 
 
+# ── Workflow execution metrics ────────────────────────────────────────────────
+
+
+class WorkflowMetrics(TypedDict):
+    """Observability snapshot captured at the final-response node.
+
+    All four key metrics are surfaced to the API and frontend:
+
+    latency_ms          Wall-clock time from workflow submission to final response.
+    total_tokens        Sum of prompt + completion tokens across every LLM call.
+    error_rate          Fraction of nodes that recorded errors (error_count / step_count).
+    hallucination_rate  Fraction of answer claims unsupported by sources
+                        (1 - groundedness_score; None if groundedness did not run).
+    judge_score         LLM-as-a-judge overall score (None if judge did not run).
+    """
+
+    started_at: str  # ISO-8601 UTC — copied from AppState.started_at
+    completed_at: str  # ISO-8601 UTC — set at final_response_node
+    latency_ms: float
+    total_tokens: int
+    error_count: int
+    error_rate: float
+    hallucination_rate: float | None
+    judge_score: float | None
+    step_count: int
+
+
 # ── Confidence scores ─────────────────────────────────────────────────────────
 
 
@@ -178,6 +205,7 @@ class FinalResponse(TypedDict):
     confidence: NotRequired[ConfidenceScores | None]
     groundedness: NotRequired[GroundednessResult | None]
     judge_result: NotRequired[JudgeResult | None]
+    metrics: NotRequired[WorkflowMetrics | None]
 
 
 # ── Error record ──────────────────────────────────────────────────────────────
@@ -290,6 +318,12 @@ class AppState(TypedDict):
     # ── Accumulated across all nodes (reducer = list concatenation) ────────────
     errors: Annotated[list[WorkflowError], operator.add]
 
+    # ── Token usage (each node adds its count; reducer sums them) ─────────────
+    total_tokens: Annotated[int, operator.add]
+
+    # ── Workflow timing (set once in initial_state; never mutated) ─────────────
+    started_at: NotRequired[str]  # ISO-8601 UTC
+
     # ── Confidence scores (written by individual nodes) ────────────────────────
     router_confidence: NotRequired[float | None]  # from RouterAgent
     retrieval_confidence: NotRequired[float | None]  # aggregate similarity score
@@ -300,6 +334,9 @@ class AppState(TypedDict):
 
     # ── LLM-as-a-judge evaluation (written by llm_judge node) ─────────────────
     judge_result: NotRequired[JudgeResult | None]
+
+    # ── Final observability snapshot (written by final_response node) ──────────
+    metrics: NotRequired[WorkflowMetrics | None]
 
     # ── Workflow tracking ──────────────────────────────────────────────────────
     current_node: NotRequired[str | None]
@@ -346,4 +383,7 @@ def initial_state(session_id: str, query: str, metadata: dict[str, str] | None =
         answer_confidence=None,
         groundedness=None,
         judge_result=None,
+        metrics=None,
+        total_tokens=0,
+        started_at=datetime.now(UTC).isoformat(),
     )

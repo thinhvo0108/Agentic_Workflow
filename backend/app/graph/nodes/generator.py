@@ -5,6 +5,7 @@ from app.agents.support_agent import SupportAgent
 from app.core.exceptions import LLMError
 from app.core.logging import get_logger
 from app.graph.state import AppState, make_error
+from app.observability.token_tracker import TokenCounterCallback, instrumented_llm
 
 _logger = get_logger(__name__)
 
@@ -45,8 +46,10 @@ async def generator_node(state: AppState) -> dict[str, Any]:
     step = state.get("step_count", 0) + 1
 
     try:
+        counter = TokenCounterCallback()
+        llm = instrumented_llm(counter)
         agent: ResearchAgent | SupportAgent = (
-            SupportAgent() if route == "support" else ResearchAgent()
+            SupportAgent(llm=llm) if route == "support" else ResearchAgent(llm=llm)
         )
         result = await agent.generate(
             query=state["query"],
@@ -85,4 +88,5 @@ async def generator_node(state: AppState) -> dict[str, Any]:
         "draft_response": draft,
         "current_node": _NODE,
         "step_count": step,
+        "total_tokens": counter.total,
     }

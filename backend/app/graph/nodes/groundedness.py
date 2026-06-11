@@ -12,8 +12,10 @@ failed evaluation.
 from typing import Any
 
 from app.core.logging import get_logger
+from app.evaluation.evaluator import GroundednessEvaluator
 from app.evaluation.service import evaluate_groundedness
 from app.graph.state import AppState, make_error
+from app.observability.token_tracker import TokenCounterCallback, instrumented_llm
 
 _logger = get_logger(__name__)
 
@@ -51,10 +53,13 @@ async def groundedness_node(state: AppState) -> dict[str, Any]:
     documents = state.get("reranked_documents") or []
 
     try:
+        counter = TokenCounterCallback()
+        evaluator = GroundednessEvaluator(llm=instrumented_llm(counter))
         result = await evaluate_groundedness(
             query=state["query"],
             answer=answer,
             documents=documents,
+            evaluator=evaluator,
         )
     except Exception as exc:
         _logger.error(
@@ -79,4 +84,5 @@ async def groundedness_node(state: AppState) -> dict[str, Any]:
         "groundedness": result,
         "current_node": _NODE,
         "step_count": step,
+        "total_tokens": counter.total,
     }

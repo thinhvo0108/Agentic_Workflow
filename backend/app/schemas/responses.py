@@ -11,6 +11,33 @@ class JudgeDimensionScore(BaseModel):
     reasoning: str
 
 
+class WorkflowMetrics(BaseModel):
+    """Observability snapshot for a completed workflow run.
+
+    All four headline metrics are always present (tokens may be 0 if Ollama
+    did not return token counts). hallucination_rate and judge_score are None
+    when the corresponding evaluation node did not run.
+    """
+
+    started_at: str = Field(description="ISO-8601 UTC — workflow submission time")
+    completed_at: str = Field(description="ISO-8601 UTC — final-response time")
+    latency_ms: float = Field(ge=0.0, description="Wall-clock latency in milliseconds")
+    total_tokens: int = Field(
+        ge=0, description="Sum of prompt + completion tokens across all LLM calls"
+    )
+    error_count: int = Field(ge=0, description="Number of nodes that recorded errors")
+    error_rate: float = Field(ge=0.0, le=1.0, description="error_count / step_count")
+    hallucination_rate: float | None = Field(
+        default=None,
+        description="Fraction of unsupported claims (1 - groundedness_score); None if groundedness did not run",
+    )
+    judge_score: float | None = Field(
+        default=None,
+        description="LLM-as-a-judge overall score; None if judge did not run",
+    )
+    step_count: int = Field(ge=0, description="Total nodes executed")
+
+
 class JudgeResult(BaseModel):
     """LLM-as-a-judge evaluation of the generated answer quality.
 
@@ -114,6 +141,7 @@ class WorkflowResponse(BaseModel):
     confidence: ConfidenceScores | None = None
     groundedness: GroundednessResult | None = None
     judge_result: JudgeResult | None = None
+    metrics: WorkflowMetrics | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 

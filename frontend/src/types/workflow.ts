@@ -64,6 +64,34 @@ export interface DraftResponse {
   web_search_results: WebSearchResult[];
 }
 
+export interface JudgeDimensionScore {
+  score: number;
+  reasoning: string;
+}
+
+export interface JudgeResult {
+  faithfulness: JudgeDimensionScore;
+  relevance: JudgeDimensionScore;
+  completeness: JudgeDimensionScore;
+  coherence: JudgeDimensionScore;
+  overall_score: number;
+  recommendation: 'auto_approve' | 'needs_review';
+  critique: string;
+  evaluated_at: string;
+}
+
+export interface WorkflowMetrics {
+  started_at: string;
+  completed_at: string;
+  latency_ms: number;
+  total_tokens: number;
+  error_count: number;
+  error_rate: number;
+  hallucination_rate: number | null;
+  judge_score: number | null;
+  step_count: number;
+}
+
 export interface WorkflowResponse {
   session_id: string;
   summary: string;
@@ -77,6 +105,8 @@ export interface WorkflowResponse {
   reviewer_comment: string | null;
   confidence: ConfidenceScores | null;
   groundedness: GroundednessResult | null;
+  judge_result: JudgeResult | null;
+  metrics: WorkflowMetrics | null;
   created_at: string;
 }
 

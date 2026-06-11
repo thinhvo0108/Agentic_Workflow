@@ -17,6 +17,7 @@ import { CheckCircleIcon, CheckIcon, InfoIcon } from '@chakra-ui/icons';
 import type { WorkflowResponse } from '../types/workflow';
 import ConfidenceStats from './ConfidenceStats';
 import DocumentsPanel from './DocumentsPanel';
+import WorkflowMetricsPanel from './WorkflowMetricsPanel';
 
 const ROUTE_LABELS: Record<string, { label: string; color: string }> = {
   research: { label: 'Research', color: 'blue' },
@@ -183,6 +184,14 @@ export default function FinalResponsePanel({ result }: Props) {
           </TabPanel>
         </TabPanels>
       </Tabs>
+
+      {/* Observability metrics — isolated section below the response */}
+      {result.metrics && (
+        <>
+          <Divider />
+          <WorkflowMetricsPanel metrics={result.metrics} />
+        </>
+      )}
     </VStack>
   );
 }
