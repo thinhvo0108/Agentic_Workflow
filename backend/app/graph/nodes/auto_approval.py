@@ -25,7 +25,7 @@ _logger = get_logger(__name__)
 _NODE = "auto_approval_gate"
 
 AUTO_APPROVE_THRESHOLD = 0.70
-JUDGE_THRESHOLD = 0.70
+JUDGE_THRESHOLD = 0.60
 
 
 async def auto_approval_gate_node(state: AppState) -> dict[str, Any]:

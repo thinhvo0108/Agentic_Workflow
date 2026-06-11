@@ -24,6 +24,9 @@ import { getWorkflowDraft } from '../api/workflow';
 import type { ApprovalAction, DraftResponse } from '../types/workflow';
 import ConfidenceStats, { scoreColor } from './ConfidenceStats';
 
+const CONFIDENCE_THRESHOLD = 0.70;
+const JUDGE_THRESHOLD = 0.60;
+
 const ROUTE_LABELS: Record<string, { label: string; color: string }> = {
   research: { label: 'Research Agent', color: 'blue' },
   support:  { label: 'Support Agent',  color: 'teal' },
@@ -90,9 +93,8 @@ export default function ApprovalPanel({ sessionId, query, onDecision }: Props) {
   const route        = draft ? (ROUTE_LABELS[draft.route] ?? { label: draft.route, color: 'gray' }) : null;
   const overallScore = draft?.confidence?.overall ?? null;
   const judgeScore   = draft?.judge_result?.overall_score ?? null;
-  const THRESHOLD    = 0.70;
-  const confidenceFailed = overallScore !== null && overallScore < THRESHOLD;
-  const judgeFailed      = judgeScore   !== null && judgeScore   < THRESHOLD;
+  const confidenceFailed = overallScore !== null && overallScore < CONFIDENCE_THRESHOLD;
+  const judgeFailed      = judgeScore   !== null && judgeScore   < JUDGE_THRESHOLD;
 
   return (
     <VStack align="stretch" spacing={5}>
@@ -128,22 +130,22 @@ export default function ApprovalPanel({ sessionId, query, onDecision }: Props) {
                   <>
                     Confidence{' '}
                     <Text as="span" fontWeight="bold" color="orange.700">{Math.round(overallScore! * 100)}%</Text>
-                    {' '}and judge score{' '}
+                    {' '}(threshold {Math.round(CONFIDENCE_THRESHOLD * 100)}%) and judge score{' '}
                     <Text as="span" fontWeight="bold" color="orange.700">{Math.round(judgeScore! * 100)}%</Text>
-                    {' '}are both below the <Text as="span" fontWeight="bold">70%</Text> threshold.
+                    {' '}(threshold {Math.round(JUDGE_THRESHOLD * 100)}%) are both below their thresholds.
                   </>
                 ) : judgeFailed ? (
                   <>
                     Confidence is sufficient{overallScore !== null ? <>{' '}(<Text as="span" fontWeight="bold" color="orange.700">{Math.round(overallScore * 100)}%</Text>)</> : null}
                     {' '}but the LLM judge score{' '}
                     <Text as="span" fontWeight="bold" color="orange.700">{Math.round(judgeScore! * 100)}%</Text>
-                    {' '}is below the <Text as="span" fontWeight="bold">70%</Text> quality threshold.
+                    {' '}is below the <Text as="span" fontWeight="bold">{Math.round(JUDGE_THRESHOLD * 100)}%</Text> quality threshold.
                   </>
                 ) : confidenceFailed ? (
                   <>
                     Overall confidence{' '}
                     <Text as="span" fontWeight="bold" color="orange.700">{Math.round(overallScore! * 100)}%</Text>
-                    {' '}is below the <Text as="span" fontWeight="bold">70%</Text> auto-approval threshold.
+                    {' '}is below the <Text as="span" fontWeight="bold">{Math.round(CONFIDENCE_THRESHOLD * 100)}%</Text> auto-approval threshold.
                   </>
                 ) : (
                   <>One or more quality signals did not meet the auto-approval threshold.</>
