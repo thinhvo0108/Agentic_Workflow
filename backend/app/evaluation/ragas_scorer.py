@@ -83,14 +83,14 @@ async def run_ragas(
     result_by_id = {r["id"]: r for r in results}
 
     for case in cases:
-        cid    = case.get("id", "?")
+        cid = case.get("id", "?")
         result = result_by_id.get(cid)
         if not result or result.get("status") not in ("completed", "approved"):
             continue
 
         question = case.get("question", "")
-        gt       = case.get("ground_truth", "")
-        answer   = result.get("answer_excerpt") or ""
+        gt = case.get("ground_truth", "")
+        answer = result.get("answer_excerpt") or ""
 
         # Truncate the answer_excerpt (120 chars) is short — use it as a proxy.
         # The harness only stores an excerpt; for a richer eval, extend the harness
@@ -103,26 +103,28 @@ async def run_ragas(
         # the full retrieved docs so RAGAS can score context_precision properly.
         context = [gt] if gt else ["(no context)"]
 
-        rows.append({
-            "question":        question,
-            "answer":          answer,
-            "contexts":        context,
-            "ground_truth":    gt,
-        })
+        rows.append(
+            {
+                "question": question,
+                "answer": answer,
+                "contexts": context,
+                "ground_truth": gt,
+            }
+        )
 
     if not rows:
         return None
 
     dataset = Dataset.from_list(rows)
 
-    llm        = LangchainLLMWrapper(ChatOllama(base_url=ollama_base_url, model=model))
+    llm = LangchainLLMWrapper(ChatOllama(base_url=ollama_base_url, model=model))
     embeddings = LangchainEmbeddingsWrapper(
         OllamaEmbeddings(base_url=ollama_base_url, model=embed_model)
     )
 
     metrics = [faithfulness, answer_relevancy, context_precision]
     for m in metrics:
-        m.llm        = llm
+        m.llm = llm
         m.embeddings = embeddings
 
     loop = asyncio.get_event_loop()

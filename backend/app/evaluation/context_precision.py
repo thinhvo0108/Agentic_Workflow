@@ -119,9 +119,7 @@ class ContextPrecisionEvaluator:
             raise LLMError(f"Context precision evaluation failed: {exc}") from exc
 
         if not isinstance(result, ContextPrecisionEvaluation):
-            raise LLMError(
-                f"Expected ContextPrecisionEvaluation, got {type(result).__name__!r}"
-            )
+            raise LLMError(f"Expected ContextPrecisionEvaluation, got {type(result).__name__!r}")
 
         relevant = sum(1 for v in result.verdicts if v.is_relevant)
         _logger.info(
