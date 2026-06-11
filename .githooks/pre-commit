@@ -26,7 +26,8 @@ if [ -n "$BACKEND_PY_CHANGED" ]; then
   echo "▶ backend Python files staged — running ruff + mypy..."
 
   # Pass only the changed files to ruff (fast); mypy checks the whole app module.
-  RUFF_TARGETS=$(echo "$BACKEND_PY_CHANGED" | tr '\n' ' ')
+  # Strip the leading "backend/" prefix since ruff runs from inside backend/.
+  RUFF_TARGETS=$(echo "$BACKEND_PY_CHANGED" | sed 's|^backend/||' | tr '\n' ' ')
 
   if (cd backend && uv run ruff check $RUFF_TARGETS); then
     echo "  ✓ ruff passed"

@@ -63,6 +63,14 @@ dev = [
 langsmith = [
     "langsmith>=0.2.0",
 ]
+eval = [
+    # Offline evaluation harness (scripts/run_eval.py)
+    "httpx>=0.28.0",
+    "pyyaml>=6.0",
+    # RAGAS scoring (optional — skip with --no-ragas if not installed)
+    "ragas>=0.2.0",
+    "datasets>=3.0.0",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["app"]

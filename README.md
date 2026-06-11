@@ -509,6 +509,74 @@ When fine-tuning a model (SFT, LoRA, RLHF/DPO), the standard checklist is:
 
 ---
 
+## Offline Evaluation Harness
+
+An automated harness (`scripts/run_eval.py`) runs end-to-end against the live stack and reports quality metrics without any manual input.
+
+### Quick start
+
+```bash
+# 1. Start the stack
+docker compose up -d
+
+# 2. Install eval dependencies (httpx + pyyaml; ragas is optional)
+cd backend
+uv sync --extra eval
+
+# 3. Run the harness
+uv run python ../scripts/run_eval.py
+```
+
+To skip RAGAS scoring (faster, no ragas package needed):
+
+```bash
+uv run python ../scripts/run_eval.py --no-ragas
+```
+
+Full options:
+
+```
+--base-url    http://localhost:8000    API base URL
+--ollama-url  http://localhost:11434   Ollama base URL
+--dataset     data/eval_dataset.yaml  YAML test cases
+--output      data/eval_results/      Results directory
+--concurrency 2                        Parallel workflow cases
+--timeout     300                      Seconds per case
+--no-ragas                             Skip RAGAS metrics
+```
+
+### What it measures
+
+| Metric | Source | Notes |
+|---|---|---|
+| `auto_approval_rate` | pipeline gate | % of cases cleared 70% confidence AND 60% judge threshold |
+| `routing_accuracy` | pipeline router | expected vs actual agent_type |
+| `mean_judge_score` | LLM-as-a-judge | holistic quality (faithfulness 40%, relevance 30%, completeness 20%, coherence 10%) |
+| `mean_groundedness` | groundedness node | supported claims / total claims |
+| `mean_context_precision` | context_eval node | relevant retrieved docs / total retrieved docs |
+| `mean_answer_similarity` | Ollama embeddings | cosine similarity of answer vs ground_truth (nomic-embed-text) |
+| `mean_hallucination_rate` | pipeline | 1 − groundedness |
+| `mean_latency_ms` | wall clock | end-to-end per query |
+| `mean_total_tokens` | token tracker | prompt + completion tokens across all nodes |
+| RAGAS faithfulness | ragas + Ollama | are all claims supported by context? |
+| RAGAS answer_relevancy | ragas + Ollama | is the answer on-topic? |
+| RAGAS context_precision | ragas + Ollama | are relevant chunks ranked first? |
+
+### Dataset
+
+`data/eval_dataset.yaml` ships with 8 calibrated test cases covering both agent types:
+
+- **5 research cases** — LangGraph, RAG, CrossEncoder, bi-encoder vs cross-encoder comparison, RAG pipeline components
+- **3 support cases** — password reset, HITL explanation, account settings navigation
+
+Each case has a `question`, `ground_truth`, and `agent_type` (for routing accuracy).  Add cases by appending entries to the YAML file — no code changes required.
+
+### Output
+
+Each run writes a timestamped JSON file to `data/eval_results/eval_<timestamp>.json` containing per-case metrics and aggregate scores.  These files can be imported into any dashboard (Grafana, Jupyter, etc.) for longitudinal tracking.
+
+---
+
 ## Multi-Tenancy
 
 ### Problem

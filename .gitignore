@@ -37,6 +37,9 @@ frontend/dist/
 .DS_Store
 Thumbs.db
 
+# Eval results (generated, timestamped JSON — not useful in history)
+data/eval_results/
+
 # NOTE: .env is intentionally NOT ignored — it contains only non-sensitive
 # defaults and is committed for a quick-start experience.
 # .env
