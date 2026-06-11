@@ -9,12 +9,11 @@ Built to demonstrate the engineering patterns used in enterprise AI systems: mul
 ## Quick Start
 
 ```bash
-# 1. Configure environment (defaults work out of the box)
-cp backend/.env.example backend/.env
-
-# 2. Start everything — models are downloaded automatically on first run
+# Start everything — models are downloaded automatically on first run
 docker compose up --build
 ```
+
+> **Environment:** a `.env` file with working defaults is already committed to the repo, so no configuration is needed to get started. If you want to customise settings (model, ports, credentials), copy `backend/.env.example` over `backend/.env` and edit as needed — or just edit `.env` directly.
 
 Open **http://localhost:5173** and start sending queries.
 
