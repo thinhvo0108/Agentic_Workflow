@@ -1,0 +1,93 @@
+# Evaluation dataset for the Agentic Workflow offline eval harness.
+#
+# Each case provides a question, an expected ground-truth answer, and the
+# agent_type the router is expected to choose (used to measure routing accuracy).
+#
+# The questions are calibrated to the seeded knowledge base (scripts/seed_kb.sh):
+#   Research KB: langgraph-docs, rag-overview, reranking-guide
+#   Support  KB: support-password-reset, hitl-overview
+#
+# Run the harness with:
+#   cd backend && uv run python ../scripts/run_eval.py
+
+cases:
+
+  # ── Research agent cases ────────────────────────────────────────────────────
+
+  - id: r1
+    agent_type: research
+    question: "What is LangGraph and how does it extend LangChain?"
+    ground_truth: >-
+      LangGraph is a library that extends LangChain for building stateful,
+      multi-actor applications with LLMs. Unlike standard LangChain, which
+      creates linear chains, LangGraph coordinates multiple actors across
+      cyclic computation steps using a StateGraph.
+
+  - id: r2
+    agent_type: research
+    question: "How does retrieval-augmented generation reduce hallucination?"
+    ground_truth: >-
+      RAG combines information retrieval with language model generation.
+      A retriever fetches relevant documents from a knowledge base; the
+      generator then conditions its output on those documents rather than
+      relying on parametric knowledge alone, which reduces hallucination and
+      improves factual accuracy.
+
+  - id: r3
+    agent_type: research
+    question: "What is a CrossEncoder model and how is it used for reranking?"
+    ground_truth: >-
+      A CrossEncoder takes a query and a document as a pair and outputs a
+      single relevance score by comparing them together. Unlike bi-encoders,
+      which encode query and document separately, cross-encoders attend to
+      both inputs simultaneously and produce more accurate scores at the cost
+      of higher latency. BAAI/bge-reranker-large is a popular open-source
+      CrossEncoder used as a reranking step after initial vector retrieval.
+
+  - id: r4
+    agent_type: research
+    question: "What is the difference between a bi-encoder and a cross-encoder?"
+    ground_truth: >-
+      Bi-encoders encode the query and document independently into separate
+      vectors and compute similarity via dot product — fast but less accurate.
+      Cross-encoders process the query and document together in a single pass,
+      attending to both simultaneously, yielding more accurate relevance scores
+      but at higher latency. Cross-encoders are therefore used for reranking
+      a small candidate set rather than first-stage retrieval.
+
+  - id: r5
+    agent_type: research
+    question: "What are the main components of a RAG pipeline?"
+    ground_truth: >-
+      A RAG pipeline has two main components: a retriever that fetches
+      relevant documents from a knowledge base given a query, and a generator
+      (LLM) that conditions its answer on the retrieved documents. Additional
+      steps such as reranking, chunking, and embedding are commonly added to
+      improve retrieval quality.
+
+  # ── Support agent cases ─────────────────────────────────────────────────────
+
+  - id: s1
+    agent_type: support
+    question: "How do I reset my password?"
+    ground_truth: >-
+      To reset your password, go to Settings, then Account, then Security,
+      then Change Password. Enter your current password, then your new password
+      twice. Changes take effect immediately.
+
+  - id: s2
+    agent_type: support
+    question: "What is human-in-the-loop and why is it important?"
+    ground_truth: >-
+      Human-in-the-loop (HITL) is a design pattern where automated workflows
+      pause to let a human reviewer approve, reject, or correct AI outputs
+      before they are acted upon. It is critical in high-stakes domains where
+      errors are costly, balancing automation with human oversight.
+
+  - id: s3
+    agent_type: support
+    question: "How do I change my account password in the settings?"
+    ground_truth: >-
+      Navigate to Settings, then Account, then Security, then Change Password.
+      You will need to enter your current password, followed by your new
+      password twice to confirm the change. The update takes effect immediately.
