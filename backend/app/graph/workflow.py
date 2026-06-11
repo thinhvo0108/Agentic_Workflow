@@ -71,6 +71,7 @@ def build_workflow() -> StateGraph:  # type: ignore[type-arg]
     """Construct the LangGraph state machine (not yet compiled)."""
     from app.graph.nodes.auto_approval import auto_approval_gate_node
     from app.graph.nodes.checkpoint import checkpoint_node
+    from app.graph.nodes.context_eval import context_eval_node
     from app.graph.nodes.final_response import final_response_node
     from app.graph.nodes.generator import generator_node
     from app.graph.nodes.groundedness import groundedness_node
@@ -94,6 +95,7 @@ def build_workflow() -> StateGraph:  # type: ignore[type-arg]
     graph.add_node("support", observe_node("support", support_node))  # type: ignore[call-overload]
     graph.add_node("retriever", observe_node("retriever", retriever_node))  # type: ignore[call-overload]
     graph.add_node("reranker", observe_node("reranker", reranker_node))  # type: ignore[call-overload]
+    graph.add_node("context_eval", observe_node("context_eval", context_eval_node))  # type: ignore[call-overload]
     graph.add_node("generator", observe_node("generator", generator_node))  # type: ignore[call-overload]
     graph.add_node("structured_output", observe_node("structured_output", structured_output_node))  # type: ignore[call-overload]
     graph.add_node("groundedness", observe_node("groundedness", groundedness_node))  # type: ignore[call-overload]
@@ -116,7 +118,8 @@ def build_workflow() -> StateGraph:  # type: ignore[type-arg]
     graph.add_edge("research", "retriever")
     graph.add_edge("support", "retriever")
     graph.add_edge("retriever", "reranker")
-    graph.add_edge("reranker", "generator")
+    graph.add_edge("reranker", "context_eval")
+    graph.add_edge("context_eval", "generator")
     graph.add_edge("generator", "structured_output")
     graph.add_edge("structured_output", "groundedness")
     graph.add_edge("groundedness", "llm_judge")

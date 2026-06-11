@@ -332,10 +332,11 @@ export default function ApprovalPanel({ sessionId, query, onDecision }: Props) {
             </Box>
           )}
 
-          {/* Confidence + groundedness scores + unsupported claims */}
+          {/* Confidence + groundedness + context precision scores */}
           <ConfidenceStats
             confidence={draft.confidence}
             groundedness={draft.groundedness}
+            contextPrecision={draft.context_precision}
           />
 
         </VStack>
