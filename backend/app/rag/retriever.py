@@ -35,7 +35,9 @@ def _parse_chroma_results(results: dict[str, Any]) -> list[RetrievedDocument]:
     distances: list[float] = results.get("distances", [[]])[0]
 
     parsed: list[RetrievedDocument] = []
-    for doc_id, content, metadata, distance in zip(ids, documents, metadatas, distances, strict=False):
+    for doc_id, content, metadata, distance in zip(
+        ids, documents, metadatas, distances, strict=False
+    ):
         if content is None:
             continue
         meta: dict[str, str] = {k: str(v) for k, v in (metadata or {}).items()}

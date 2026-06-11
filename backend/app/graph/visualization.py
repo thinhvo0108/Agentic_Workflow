@@ -77,11 +77,15 @@ def generate_ascii_table() -> str:
         ("END", "—", "Workflow terminal state"),
     ]
     col_w = [max(len(r[i]) for r in rows) for i in range(3)]
-    col_w = [max(cw, len(h)) for cw, h in zip(col_w, ["Node", "Backend", "Responsibility"], strict=False)]
+    col_w = [
+        max(cw, len(h)) for cw, h in zip(col_w, ["Node", "Backend", "Responsibility"], strict=False)
+    ]
     sep = "+" + "+".join("-" * (w + 2) for w in col_w) + "+"
     header = (
         "| "
-        + " | ".join(h.ljust(w) for h, w in zip(["Node", "Backend", "Responsibility"], col_w, strict=False))
+        + " | ".join(
+            h.ljust(w) for h, w in zip(["Node", "Backend", "Responsibility"], col_w, strict=False)
+        )
         + " |"
     )
     lines = [sep, header, sep]

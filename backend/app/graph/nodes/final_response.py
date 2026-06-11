@@ -73,6 +73,7 @@ async def final_response_node(state: AppState) -> dict[str, Any]:
         created_at=datetime.now(UTC).isoformat(),
         confidence=confidence,
         groundedness=state.get("groundedness"),
+        judge_result=state.get("judge_result"),
     )
 
     _logger.info(
