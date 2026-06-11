@@ -19,6 +19,90 @@ docker compose up --build
 
 Open **http://localhost:5173** and start sending queries.
 
+---
+
+## Screenshots
+
+### Home — query submission
+
+The landing page with a sample research query typed in. Feature highlights (Multi-Agent Routing, RAG Pipeline, Human-in-the-Loop, Structured Output) are shown below the input card.
+
+![Home page](docs/screenshots/01-home.png)
+
+---
+
+### Awaiting approval — manual review triggered
+
+Support Agent processed the query *"how to reset my password"*. Confidence was sufficient (77 %) but the LLM judge score (10 %) fell well below the 60 % threshold, so the workflow paused and flagged the response for human review.
+
+![Approval panel — manual review required](docs/screenshots/02-auto-approved.png)
+
+---
+
+### Approval panel — web search results
+
+The same session scrolled to show 5 live DuckDuckGo web results fetched automatically after the gate failed, alongside the KB source document (support-password-reset, 73 % relevance). The reviewer form is visible with Approve/Reject buttons still disabled (no reviewer ID entered yet).
+
+![Approval panel — web search results and source document](docs/screenshots/03-auto-approved-detail.png)
+
+---
+
+### Approval panel — confidence metrics and unsupported claim
+
+Confidence circles (77 % confidence, 50 % grounded) with per-dimension bars. One unsupported claim is highlighted. Approve and Reject buttons remain disabled until a Reviewer ID is provided.
+
+![Approval panel — confidence metrics and unsupported claim alert](docs/screenshots/04-awaiting-approval.png)
+
+---
+
+### Approval panel — reviewer ID entered, buttons active
+
+With the Reviewer ID field filled in (`thinh@thinh.tech`), the Approve and Reject buttons become active, ready for the human decision.
+
+![Approval panel — reviewer ID filled, buttons enabled](docs/screenshots/05-approval-panel-web-search.png)
+
+---
+
+### Completed — support agent approved by reviewer
+
+After the reviewer clicked Approve, the response was released and the Q&A pair was added to the support knowledge base ("Added to knowledge base"). Workflow metrics: 167 s latency, 2,402 tokens, 10 % judge score (below threshold — human stepped in), 50 % hallucination rate.
+
+![Completed support session after human approval](docs/screenshots/06-approval-panel-review.png)
+
+---
+
+### Completed — research agent approved, KB feedback loop
+
+A Research Agent session ("What is LangGraph?") approved by a human reviewer. The green banner confirms the answer was ingested back into the ChromaDB collection: *"Similar queries may auto-approve next time."* Metrics: 95 s, 2,775 tokens, 60 % judge score (at threshold).
+
+![Completed research session — knowledge base updated](docs/screenshots/07-approved-kb-update.png)
+
+---
+
+### Auto-approved — high-confidence research response
+
+The same LangGraph research query on a later run reached 78 % confidence and 100 % groundedness. Both the confidence gate (≥ 70 %) and LLM judge (≥ 60 %) passed, so the workflow auto-approved with no human involved. Web Search and KB Update steps were skipped. 10 nodes, 33 s latency.
+
+![Auto-approved research response](docs/screenshots/08-approved-support.png)
+
+---
+
+### Auto-approved — workflow metrics detail
+
+Scrolled view of the same auto-approved session showing the full answer, workflow metrics card (33 s, 2,654 tokens, 68 % judge score, 0 % hallucination rate, 0 % errors), and the stepper confirming Gate passed at ≥ 70 % confidence.
+
+![Auto-approved session — metrics and answer detail](docs/screenshots/09-manual-review-reason.png)
+
+---
+
+### Auto-approved — research query with unsupported claim
+
+Research query *"What does LLM stand for?"* auto-approved with 76 % confidence and 76 % judge score (both thresholds cleared). The groundedness checker flagged 1 unsupported claim (25 % hallucination rate), visible in the quality signals panel — demonstrating that auto-approval and claim-level grounding analysis run independently.
+
+![Auto-approved research query with unsupported claim flagged](docs/screenshots/10-approval-form.png)
+
+---
+
 > **First run note:** `docker compose up` will download `llama3.2:latest` (~2 GB) and `nomic-embed-text` (~274 MB) automatically via the `ollama-pull` service. The backend starts only after both models are ready. This takes 5–15 minutes depending on your connection; subsequent starts are instant (models are cached in the `ollama_data` volume).
 
 | Service | URL |
