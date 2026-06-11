@@ -14,10 +14,7 @@ TestMiddleware        — RequestTracingMiddleware: request_id in logs, path nor
 TestLogging           — _inject_otel_context processor adds trace_id when span active
 """
 
-import asyncio
-import time
-from collections.abc import AsyncGenerator
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 import structlog
@@ -34,7 +31,6 @@ from app.observability.metrics import (
 from app.observability.middleware import _normalise_path
 from app.observability.node_telemetry import observe_node
 from app.observability.tracing import configure_tracing, get_tracer
-
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -87,7 +83,7 @@ class TestTracing:
             assert span is not None
 
     def test_active_span_has_context(self):
-        from opentelemetry import trace
+
         tracer = get_tracer("test")
         with tracer.start_as_current_span("ctx.test") as span:
             ctx = span.get_span_context()
@@ -103,6 +99,7 @@ class TestMetrics:
     def setup_method(self):
         # Reset module-level globals to allow re-configuration
         import app.observability.metrics as m
+
         m._meter_provider = None
         m._meter = None
         m._node_duration = None
@@ -150,7 +147,8 @@ class TestMetrics:
         record_approval_decision("rejected")
 
     def test_prometheus_output_contains_metric_names(self):
-        from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
+        from prometheus_client import generate_latest
+
         configure_metrics()
         # Trigger a recording so the metric appears in the registry
         record_node_duration("test_node", "research", 0.1)
@@ -166,6 +164,7 @@ class TestMetrics:
     def test_recording_without_configure_does_not_raise(self):
         """Guards against the case where metrics are called before configure."""
         import app.observability.metrics as m
+
         # Instruments are None — helpers must be defensive
         m._node_duration = None
         m._node_errors = None
@@ -249,7 +248,10 @@ class TestNodeTelemetry:
     async def test_no_error_counter_on_success(self):
         errors: list = []
 
-        with patch("app.observability.node_telemetry.record_node_error", side_effect=lambda *a: errors.append(a)):
+        with patch(
+            "app.observability.node_telemetry.record_node_error",
+            side_effect=lambda *a: errors.append(a),
+        ):
             wrapped = observe_node("ok_node", _dummy_node)
             await wrapped(_state())
 
@@ -259,22 +261,24 @@ class TestNodeTelemetry:
     async def test_span_created_for_node(self):
         spans_started: list[str] = []
 
-        original_start = None
-
         class _FakeTracer:
             def start_as_current_span(self, name, **kw):
                 spans_started.append(name)
-                from opentelemetry.sdk.trace import TracerProvider
                 from opentelemetry.trace import NonRecordingSpan, SpanContext, TraceFlags
+
                 ctx = SpanContext(
-                    trace_id=0, span_id=0, is_remote=False,
+                    trace_id=0,
+                    span_id=0,
+                    is_remote=False,
                     trace_flags=TraceFlags(0),
                 )
                 span = NonRecordingSpan(ctx)
                 from contextlib import contextmanager
+
                 @contextmanager
                 def _ctx():
                     yield span
+
                 return _ctx()
 
         with patch("app.observability.node_telemetry.get_tracer", return_value=_FakeTracer()):
@@ -345,8 +349,10 @@ class TestMiddleware:
     async def test_middleware_adds_request_id_header(self):
         from fastapi import FastAPI
         from fastapi.testclient import TestClient
-        from app.observability.middleware import RequestTracingMiddleware
+
         from app.observability.metrics import configure_metrics as _cm
+        from app.observability.middleware import RequestTracingMiddleware
+
         _cm()
 
         app = FastAPI()
@@ -365,6 +371,7 @@ class TestMiddleware:
     async def test_middleware_different_request_ids_per_request(self):
         from fastapi import FastAPI
         from fastapi.testclient import TestClient
+
         from app.observability.middleware import RequestTracingMiddleware
 
         app = FastAPI()
@@ -386,6 +393,7 @@ class TestMiddleware:
 class TestLoggingProcessor:
     def test_inject_otel_context_adds_trace_id_when_span_active(self):
         from app.core.logging import _inject_otel_context
+
         tracer = get_tracer("test.logging")
         event_dict: dict = {"event": "hello"}
         with tracer.start_as_current_span("log.test"):
@@ -396,12 +404,14 @@ class TestLoggingProcessor:
 
     def test_inject_otel_context_does_not_crash_without_span(self):
         from app.core.logging import _inject_otel_context
+
         event_dict: dict = {"event": "hello"}
         result = _inject_otel_context(None, "info", event_dict)  # type: ignore[arg-type]
         assert "event" in result
 
     def test_inject_otel_context_does_not_overwrite_existing_trace_id(self):
         from app.core.logging import _inject_otel_context
+
         event_dict = {"event": "hello", "trace_id": "my-custom-trace"}
         tracer = get_tracer("test")
         with tracer.start_as_current_span("override.test"):
@@ -411,8 +421,10 @@ class TestLoggingProcessor:
 
     def test_inject_otel_context_handles_missing_otel_gracefully(self):
         """Must not raise if opentelemetry is not importable."""
-        from app.core.logging import _inject_otel_context
         import sys
+
+        from app.core.logging import _inject_otel_context
+
         # Simulate missing opentelemetry by patching the import inside the function
         with patch.dict(sys.modules, {"opentelemetry": None, "opentelemetry.trace": None}):
             event_dict = {"event": "hello"}

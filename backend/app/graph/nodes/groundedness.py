@@ -9,6 +9,8 @@ Downstream nodes can inspect state["groundedness"] for None to detect a
 failed evaluation.
 """
 
+from typing import Any
+
 from app.core.logging import get_logger
 from app.evaluation.service import evaluate_groundedness
 from app.graph.state import AppState, make_error
@@ -18,7 +20,7 @@ _logger = get_logger(__name__)
 _NODE = "groundedness"
 
 
-async def groundedness_node(state: AppState) -> dict:
+async def groundedness_node(state: AppState) -> dict[str, Any]:
     """Evaluate how well the generated answer is grounded in source documents.
 
     Reads
@@ -38,16 +40,12 @@ async def groundedness_node(state: AppState) -> dict:
     so = state.get("structured_output")
 
     if so is None:
-        _logger.warning(
-            "groundedness_node_skip_no_output", session_id=state["session_id"]
-        )
+        _logger.warning("groundedness_node_skip_no_output", session_id=state["session_id"])
         return {"current_node": _NODE, "step_count": step}
 
     answer = so.get("answer", "")
     if not answer:
-        _logger.warning(
-            "groundedness_node_skip_empty_answer", session_id=state["session_id"]
-        )
+        _logger.warning("groundedness_node_skip_empty_answer", session_id=state["session_id"])
         return {"current_node": _NODE, "step_count": step}
 
     documents = state.get("reranked_documents") or []

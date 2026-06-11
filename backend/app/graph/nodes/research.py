@@ -1,12 +1,14 @@
+from typing import Any
+
 from app.core.logging import get_logger
-from app.graph.state import AppState, make_error
+from app.graph.state import AppState
 
 _logger = get_logger(__name__)
 
 _NODE = "research"
 
 
-async def research_node(state: AppState) -> dict:
+async def research_node(state: AppState) -> dict[str, Any]:
     """Mark the research execution path and advance the step counter.
 
     The research path always proceeds to the retriever node so no

@@ -21,14 +21,14 @@ from app.services.approval_service import ApprovalService
 
 _logger = get_logger(__name__)
 
-_workflow: CompiledStateGraph | None = None
+_workflow: CompiledStateGraph | None = None  # type: ignore[type-arg]
 _approval_service: ApprovalService | None = None
 
 # Running workflow tasks tracked to detect errors in background jobs.
-_running_tasks: dict[str, asyncio.Task] = {}
+_running_tasks: dict[str, asyncio.Task[None]] = {}
 
 
-def init_workflow(checkpointer: Any | None = None) -> CompiledStateGraph:
+def init_workflow(checkpointer: Any | None = None) -> CompiledStateGraph:  # type: ignore[type-arg]
     """Compile and cache the workflow.  Safe to call multiple times."""
     global _workflow, _approval_service
     cp = checkpointer if checkpointer is not None else MemorySaver()
@@ -38,7 +38,7 @@ def init_workflow(checkpointer: Any | None = None) -> CompiledStateGraph:
     return _workflow
 
 
-def get_workflow() -> CompiledStateGraph:
+def get_workflow() -> CompiledStateGraph:  # type: ignore[type-arg]
     """FastAPI dependency — returns the compiled workflow."""
     if _workflow is None:
         return init_workflow()
@@ -53,11 +53,11 @@ def get_approval_service() -> ApprovalService:
     return _approval_service
 
 
-def track_task(session_id: str, task: asyncio.Task) -> None:
+def track_task(session_id: str, task: asyncio.Task[None]) -> None:
     """Register a background workflow task so errors can be inspected."""
     _running_tasks[session_id] = task
     task.add_done_callback(lambda t: _running_tasks.pop(session_id, None))
 
 
-def get_task(session_id: str) -> asyncio.Task | None:
+def get_task(session_id: str) -> asyncio.Task[None] | None:
     return _running_tasks.get(session_id)

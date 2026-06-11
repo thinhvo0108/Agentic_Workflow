@@ -16,14 +16,14 @@ Design
 """
 
 import re
-
-from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
+from typing import Any
 
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.runnables import Runnable
 from langchain_ollama import ChatOllama
 from pydantic import BaseModel, Field
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from app.core.config import get_settings
 from app.core.exceptions import LLMError
@@ -153,16 +153,14 @@ def _backfill_citations(
     # [N] positional citations
     numeric_indices: set[int] = {
         int(m.group(1)) - 1
-        for m in re.finditer(r'\[(\d+)\]', output.answer)
+        for m in re.finditer(r"\[(\d+)\]", output.answer)
         if 0 <= int(m.group(1)) - 1 < len(documents)
     }
 
     # [doc-id] citations — match exact document IDs from the context
     doc_id_to_idx = {doc["id"]: i for i, doc in enumerate(documents)}
     doc_id_indices: set[int] = {
-        idx
-        for doc_id, idx in doc_id_to_idx.items()
-        if f"[{doc_id}]" in output.answer
+        idx for doc_id, idx in doc_id_to_idx.items() if f"[{doc_id}]" in output.answer
     }
 
     cited_indices = sorted(numeric_indices | doc_id_indices)
@@ -170,8 +168,14 @@ def _backfill_citations(
     if not cited_indices:
         # No inline markers found — fall back to all retrieved documents unless
         # the model explicitly said it has no information (would be misleading).
-        _no_info = ("do not contain", "not enough information", "cannot answer",
-                    "no information", "insufficient information", "not mentioned")
+        _no_info = (
+            "do not contain",
+            "not enough information",
+            "cannot answer",
+            "no information",
+            "insufficient information",
+            "not mentioned",
+        )
         lower = output.answer.lower()
         if any(p in lower for p in _no_info):
             return output
@@ -204,13 +208,13 @@ class ResearchAgent:
 
     def __init__(self, llm: BaseChatModel | None = None) -> None:
         settings = get_settings()
-        _llm: BaseChatModel = llm or ChatOllama(
+        _llm: BaseChatModel = llm or ChatOllama(  # type: ignore[call-arg]
             model=settings.ollama.default_model,
             base_url=settings.ollama.base_url,
             timeout=settings.ollama.timeout,
             temperature=0.0,
         )
-        self._chain: Runnable = _llm.with_structured_output(ResearchOutput)
+        self._chain: Runnable[Any, Any] = _llm.with_structured_output(ResearchOutput)
 
     async def generate(
         self,
@@ -239,9 +243,7 @@ class ResearchAgent:
         context = _build_context(documents)
         messages = [
             SystemMessage(content=_SYSTEM_PROMPT),
-            HumanMessage(
-                content=_HUMAN_TEMPLATE.format(query=query, context=context)
-            ),
+            HumanMessage(content=_HUMAN_TEMPLATE.format(query=query, context=context)),
         ]
 
         try:
@@ -252,9 +254,7 @@ class ResearchAgent:
             raise LLMError(f"Research generation failed: {exc}") from exc
 
         if not isinstance(result, ResearchOutput):
-            raise LLMError(
-                f"Expected ResearchOutput from LLM, got {type(result).__name__!r}"
-            )
+            raise LLMError(f"Expected ResearchOutput from LLM, got {type(result).__name__!r}")
 
         result = _override_citation_scores(result, documents)
         result = _backfill_citations(result, documents)
@@ -273,5 +273,5 @@ class ResearchAgent:
         retry=retry_if_exception_type(Exception),
         reraise=True,
     )
-    async def _invoke_with_retry(self, messages: list) -> object:
+    async def _invoke_with_retry(self, messages: list[Any]) -> object:
         return await self._chain.ainvoke(messages)

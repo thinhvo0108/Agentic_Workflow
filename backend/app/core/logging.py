@@ -18,13 +18,10 @@ from typing import Any
 import structlog
 from structlog.types import EventDict, WrappedLogger
 
-
 # ── Processors ────────────────────────────────────────────────────────────────
 
 
-def _add_service(
-    logger: WrappedLogger, method_name: str, event_dict: EventDict
-) -> EventDict:
+def _add_service(logger: WrappedLogger, method_name: str, event_dict: EventDict) -> EventDict:
     event_dict["service"] = "agentic-workflow"
     return event_dict
 
@@ -101,4 +98,4 @@ def configure_logging(log_level: str = "INFO") -> None:
 
 
 def get_logger(name: str) -> structlog.stdlib.BoundLogger:
-    return structlog.get_logger(name)
+    return structlog.get_logger(name)  # type: ignore[no-any-return]

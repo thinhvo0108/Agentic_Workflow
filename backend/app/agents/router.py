@@ -11,13 +11,14 @@ Design
   Ollama timeouts are retried before surfacing an LLMError.
 """
 
-from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
+from typing import Any
 
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.runnables import Runnable
 from langchain_ollama import ChatOllama
 from pydantic import BaseModel, Field
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from app.core.config import get_settings
 from app.core.exceptions import LLMError
@@ -96,13 +97,13 @@ class RouterAgent:
 
     def __init__(self, llm: BaseChatModel | None = None) -> None:
         settings = get_settings()
-        _llm: BaseChatModel = llm or ChatOllama(
+        _llm: BaseChatModel = llm or ChatOllama(  # type: ignore[call-arg]
             model=settings.ollama.default_model,
             base_url=settings.ollama.base_url,
             timeout=settings.ollama.timeout,
         )
         # with_structured_output returns a Runnable that outputs a RouteOutput
-        self._chain: Runnable = _llm.with_structured_output(RouteOutput)
+        self._chain: Runnable[Any, Any] = _llm.with_structured_output(RouteOutput)
 
     async def classify(self, query: str) -> RouteOutput:
         """Classify *query* and return a RouteOutput.
@@ -126,9 +127,7 @@ class RouterAgent:
             raise LLMError(f"Router classification failed: {exc}") from exc
 
         if not isinstance(result, RouteOutput):
-            raise LLMError(
-                f"Expected RouteOutput from LLM, got {type(result).__name__!r}"
-            )
+            raise LLMError(f"Expected RouteOutput from LLM, got {type(result).__name__!r}")
 
         _logger.info(
             "router_classified",
@@ -146,5 +145,5 @@ class RouterAgent:
         retry=retry_if_exception_type(Exception),
         reraise=True,
     )
-    async def _invoke_with_retry(self, messages: list) -> object:
+    async def _invoke_with_retry(self, messages: list[Any]) -> object:
         return await self._chain.ainvoke(messages)

@@ -30,15 +30,14 @@ Both internal chains (confidence + generation) are derived from the injected llm
 Pass a mock in tests to avoid touching Ollama.
 """
 
-from typing import Literal
-
-from tenacity import AsyncRetrying, stop_after_attempt, wait_exponential
+from typing import Any, Literal, cast
 
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.runnables import Runnable
 from langchain_ollama import ChatOllama
 from pydantic import BaseModel, Field
+from tenacity import AsyncRetrying, stop_after_attempt, wait_exponential
 
 from app.agents.research_agent import (
     ResearchOutput,
@@ -185,14 +184,16 @@ class SupportAgent:
 
     def __init__(self, llm: BaseChatModel | None = None) -> None:
         settings = get_settings()
-        _llm: BaseChatModel = llm or ChatOllama(
+        _llm: BaseChatModel = llm or ChatOllama(  # type: ignore[call-arg]
             model=settings.ollama.default_model,
             base_url=settings.ollama.base_url,
             timeout=settings.ollama.timeout,
             temperature=0.0,
         )
-        self._confidence_chain: Runnable = _llm.with_structured_output(ConfidenceAssessment)
-        self._generate_chain: Runnable = _llm.with_structured_output(SupportOutput)
+        self._confidence_chain: Runnable[Any, Any] = _llm.with_structured_output(
+            ConfidenceAssessment
+        )
+        self._generate_chain: Runnable[Any, Any] = _llm.with_structured_output(SupportOutput)
 
     # ── Public API ─────────────────────────────────────────────────────────────
 
@@ -236,13 +237,14 @@ class SupportAgent:
         use_retrieval = (_needs_retrieval(assessment) or has_relevant_docs) and bool(documents)
 
         if use_retrieval:
-            result = await self._generate_with_context(query, documents)
-            result = _override_citation_scores(result, documents)  # type: ignore[arg-type]
-            result = _backfill_citations(result, documents)  # type: ignore[arg-type]
+            support_result = await self._generate_with_context(query, documents)
+            intermediate: ResearchOutput = _override_citation_scores(support_result, documents)
+            intermediate = _backfill_citations(intermediate, documents)
+            result = cast(SupportOutput, intermediate)
         else:
             result = await self._generate_direct(query)
 
-        return result.model_copy(  # type: ignore[return-value]
+        return result.model_copy(
             update={
                 "retrieval_used": use_retrieval,
                 "confidence": assessment.confidence,
@@ -265,9 +267,7 @@ class SupportAgent:
             raise LLMError(f"Confidence assessment failed: {exc}") from exc
 
         if not isinstance(result, ConfidenceAssessment):
-            raise LLMError(
-                f"Expected ConfidenceAssessment, got {type(result).__name__!r}"
-            )
+            raise LLMError(f"Expected ConfidenceAssessment, got {type(result).__name__!r}")
         _logger.info(
             "support_triage_complete",
             can_answer_directly=result.can_answer_directly,
@@ -280,9 +280,7 @@ class SupportAgent:
         """Pass 2a: answer from general knowledge, no documents."""
         messages = [
             SystemMessage(content=_DIRECT_SYSTEM),
-            HumanMessage(
-                content=_HUMAN_TEMPLATE.format(query=query, context_section="")
-            ),
+            HumanMessage(content=_HUMAN_TEMPLATE.format(query=query, context_section="")),
         ]
         try:
             result = await self._invoke_with_retry(self._generate_chain, messages)
@@ -292,9 +290,7 @@ class SupportAgent:
             raise LLMError(f"Direct support generation failed: {exc}") from exc
 
         if not isinstance(result, SupportOutput):
-            raise LLMError(
-                f"Expected SupportOutput, got {type(result).__name__!r}"
-            )
+            raise LLMError(f"Expected SupportOutput, got {type(result).__name__!r}")
         return result
 
     async def _generate_with_context(
@@ -319,14 +315,12 @@ class SupportAgent:
             raise LLMError(f"Context support generation failed: {exc}") from exc
 
         if not isinstance(result, SupportOutput):
-            raise LLMError(
-                f"Expected SupportOutput, got {type(result).__name__!r}"
-            )
+            raise LLMError(f"Expected SupportOutput, got {type(result).__name__!r}")
         return result
 
     # ── Retry helper ───────────────────────────────────────────────────────────
 
-    async def _invoke_with_retry(self, chain: Runnable, messages: list) -> object:
+    async def _invoke_with_retry(self, chain: Runnable[Any, Any], messages: list[Any]) -> object:
         """Invoke *chain* with up to 3 attempts (exponential back-off 1–8 s)."""
         async for attempt in AsyncRetrying(
             stop=stop_after_attempt(3),

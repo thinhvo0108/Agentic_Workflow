@@ -10,6 +10,8 @@ Errors are caught and logged; the node always returns so the workflow
 reaches END even if the KB write fails.
 """
 
+from typing import Any
+
 from app.core.logging import get_logger
 from app.graph.state import AppState, make_error
 
@@ -17,7 +19,7 @@ _logger = get_logger(__name__)
 _NODE = "knowledge_update"
 
 
-async def knowledge_update_node(state: AppState) -> dict:
+async def knowledge_update_node(state: AppState) -> dict[str, Any]:
     """Embed the approved Q&A pair and upsert it into the vector store."""
     from app.rag.ingestion import IngestDocument, IngestionPipeline
 
@@ -45,21 +47,24 @@ async def knowledge_update_node(state: AppState) -> dict:
 
     try:
         from app.core.config import get_settings
+
         route = state.get("route") or "shared"
         collection_name = get_settings().chroma.collection_for(route)
         pipeline = IngestionPipeline(collection_name=collection_name)
-        chunk_count = await pipeline.ingest([
-            IngestDocument(
-                content=content,
-                source=f"approved_qa:{session_id}",
-                metadata={
-                    "type": "approved_qa",
-                    "session_id": session_id,
-                    "reviewer_id": reviewer_id,
-                    "query": query[:256],
-                },
-            )
-        ])
+        chunk_count = await pipeline.ingest(
+            [
+                IngestDocument(
+                    content=content,
+                    source=f"approved_qa:{session_id}",
+                    metadata={
+                        "type": "approved_qa",
+                        "session_id": session_id,
+                        "reviewer_id": reviewer_id,
+                        "query": query[:256],
+                    },
+                )
+            ]
+        )
         _logger.info(
             "knowledge_update_done",
             session_id=session_id,

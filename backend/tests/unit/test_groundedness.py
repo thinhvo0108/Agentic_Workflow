@@ -20,7 +20,6 @@ from app.evaluation.service import build_groundedness_result, evaluate_groundedn
 from app.graph.nodes.groundedness import groundedness_node
 from app.graph.state import RankedDocument, StructuredOutput, initial_state
 
-
 # ── Factories ──────────────────────────────────────────────────────────────────
 
 
@@ -156,9 +155,7 @@ class TestEvaluateGroundedness:
         mock_ev.evaluate = AsyncMock(side_effect=RuntimeError("LLM down"))
 
         with pytest.raises(RuntimeError, match="LLM down"):
-            await evaluate_groundedness(
-                query="q", answer="a", documents=[], evaluator=mock_ev
-            )
+            await evaluate_groundedness(query="q", answer="a", documents=[], evaluator=mock_ev)
 
 
 # ── groundedness_node ─────────────────────────────────────────────────────────
@@ -179,9 +176,7 @@ class TestGroundednessNode:
         async def _fake_evaluate(query, answer, documents, evaluator=None):
             return build_groundedness_result(ev)
 
-        monkeypatch.setattr(
-            "app.graph.nodes.groundedness.evaluate_groundedness", _fake_evaluate
-        )
+        monkeypatch.setattr("app.graph.nodes.groundedness.evaluate_groundedness", _fake_evaluate)
 
         state = self._state()
         result = await groundedness_node(state)
@@ -213,9 +208,7 @@ class TestGroundednessNode:
         async def _fail(query, answer, documents, evaluator=None):
             raise RuntimeError("timeout")
 
-        monkeypatch.setattr(
-            "app.graph.nodes.groundedness.evaluate_groundedness", _fail
-        )
+        monkeypatch.setattr("app.graph.nodes.groundedness.evaluate_groundedness", _fail)
 
         state = self._state()
         result = await groundedness_node(state)
@@ -232,9 +225,7 @@ class TestGroundednessNode:
         async def _fake_evaluate(query, answer, documents, evaluator=None):
             return build_groundedness_result(ev)
 
-        monkeypatch.setattr(
-            "app.graph.nodes.groundedness.evaluate_groundedness", _fake_evaluate
-        )
+        monkeypatch.setattr("app.graph.nodes.groundedness.evaluate_groundedness", _fake_evaluate)
 
         state = self._state()
         state["step_count"] = 7

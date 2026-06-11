@@ -17,7 +17,6 @@ production the DDL should be managed via migrations; setup() is idempotent.
 """
 
 import json
-from typing import Any
 
 import asyncpg
 
@@ -176,9 +175,7 @@ class CheckpointRepository:
                 f"Failed to save checkpoint for session '{record.session_id}': {exc}"
             ) from exc
 
-        return record.model_copy(
-            update={"id": row["id"], "created_at": row["created_at"]}
-        )
+        return record.model_copy(update={"id": row["id"], "created_at": row["created_at"]})
 
     # ── Read ──────────────────────────────────────────────────────────────────
 
@@ -210,9 +207,7 @@ class CheckpointRepository:
         """Return the most recent checkpoint at *stage* for *session_id*, or None."""
         try:
             async with self._pool.acquire() as conn:
-                row = await conn.fetchrow(
-                    _SELECT_BY_STAGE_SQL, session_id, str(stage)
-                )
+                row = await conn.fetchrow(_SELECT_BY_STAGE_SQL, session_id, str(stage))
         except Exception as exc:
             raise CheckpointError(
                 f"Failed to get '{stage}' checkpoint for session '{session_id}': {exc}"
@@ -223,7 +218,7 @@ class CheckpointRepository:
         """Return the number of checkpoint records for *session_id*."""
         try:
             async with self._pool.acquire() as conn:
-                return await conn.fetchval(_COUNT_SQL, session_id)
+                return await conn.fetchval(_COUNT_SQL, session_id)  # type: ignore[no-any-return]
         except Exception as exc:
             raise CheckpointError(
                 f"Failed to count checkpoints for session '{session_id}': {exc}"

@@ -1,3 +1,5 @@
+from typing import Any
+
 from app.core.config import get_settings
 from app.core.exceptions import EmbeddingError, RetrievalError
 from app.core.logging import get_logger
@@ -10,7 +12,7 @@ _logger = get_logger(__name__)
 _NODE = "retriever"
 
 
-async def retriever_node(state: AppState) -> dict:
+async def retriever_node(state: AppState) -> dict[str, Any]:
     """Query ChromaDB for the top-K chunks most relevant to the user query.
 
     Reads

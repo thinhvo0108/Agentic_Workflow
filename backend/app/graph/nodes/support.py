@@ -1,3 +1,5 @@
+from typing import Any
+
 from app.core.logging import get_logger
 from app.graph.state import AppState
 
@@ -6,7 +8,7 @@ _logger = get_logger(__name__)
 _NODE = "support"
 
 
-async def support_node(state: AppState) -> dict:
+async def support_node(state: AppState) -> dict[str, Any]:
     """Mark the support execution path and advance the step counter.
 
     The support path always proceeds through the retriever so documents are

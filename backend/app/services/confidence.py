@@ -54,7 +54,7 @@ def score_retrieval(docs: list[RetrievedDocument]) -> float:
         return 0.0
     weights = [1.0 / (i + 1) for i in range(len(docs))]
     total_weight = sum(weights)
-    weighted_sum = sum(w * d["score"] for w, d in zip(weights, docs))
+    weighted_sum = sum(w * d["score"] for w, d in zip(weights, docs, strict=False))
     return _clamp(weighted_sum / total_weight)
 
 

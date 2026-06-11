@@ -10,6 +10,7 @@ os.environ.setdefault("POSTGRES_PASSWORD", "postgres")
 @pytest.fixture(scope="session")
 def app():
     from app.main import create_app
+
     return create_app()
 
 

@@ -14,8 +14,10 @@ CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
 
 # ── Builder ────────────────────────────────────────────────────────────────────
 # Produces the static dist/ bundle.
+# NODE_ENV is intentionally NOT set to production here — npm ci would skip
+# devDependencies (including tsc/vite) if it were. The vite build output is
+# production-optimised regardless of NODE_ENV during the install phase.
 FROM base AS builder
-ENV NODE_ENV=production
 COPY package.json package-lock.json* ./
 RUN npm ci
 COPY . .

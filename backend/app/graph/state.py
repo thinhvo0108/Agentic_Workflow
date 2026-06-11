@@ -15,7 +15,6 @@ import operator
 from datetime import UTC, datetime
 from typing import Annotated, Literal, NotRequired, TypedDict
 
-
 # ── Primitive aliases ─────────────────────────────────────────────────────────
 
 ApprovalStatus = Literal["pending", "approved", "rejected"]
@@ -43,7 +42,7 @@ class RankedDocument(TypedDict):
     source: str
     metadata: dict[str, str]
     retrieval_score: float  # original vector similarity
-    rerank_score: float     # CrossEncoder relevance score
+    rerank_score: float  # CrossEncoder relevance score
 
 
 # ── Web search result ─────────────────────────────────────────────────────────
@@ -258,9 +257,9 @@ class AppState(TypedDict):
     errors: Annotated[list[WorkflowError], operator.add]
 
     # ── Confidence scores (written by individual nodes) ────────────────────────
-    router_confidence: NotRequired[float | None]      # from RouterAgent
-    retrieval_confidence: NotRequired[float | None]   # aggregate similarity score
-    answer_confidence: NotRequired[float | None]      # mean rerank score of context
+    router_confidence: NotRequired[float | None]  # from RouterAgent
+    retrieval_confidence: NotRequired[float | None]  # aggregate similarity score
+    answer_confidence: NotRequired[float | None]  # mean rerank score of context
 
     # ── Groundedness evaluation (written by groundedness node) ─────────────────
     groundedness: NotRequired[GroundednessResult | None]

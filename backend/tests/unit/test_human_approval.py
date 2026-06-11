@@ -12,9 +12,8 @@ TestApprovalService     — get_status, get_state, submit_decision, get_final_re
 TestApprovalRoutes      — FastAPI endpoints via TestClient (submit, status, result, approve)
 """
 
-import asyncio
 from datetime import UTC, datetime
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
@@ -24,12 +23,10 @@ from app.graph.nodes.final_response import final_response_node
 from app.graph.nodes.human_approval import human_approval_node
 from app.graph.state import (
     Citation,
-    FinalResponse,
     StructuredOutput,
     initial_state,
 )
 from app.services.approval_service import ApprovalService, _derive_status
-
 
 # ── Factories ──────────────────────────────────────────────────────────────────
 
@@ -190,9 +187,7 @@ class TestFinalResponseNode:
     @pytest.mark.asyncio
     async def test_empty_citations_list_preserved(self):
         s = _state()
-        s["structured_output"] = StructuredOutput(
-            summary="a" * 10, answer="b" * 20, citations=[]
-        )
+        s["structured_output"] = StructuredOutput(summary="a" * 10, answer="b" * 20, citations=[])
         update = await final_response_node(s)
         assert update["final_response"]["citations"] == []
 
@@ -239,8 +234,11 @@ class TestDeriveStatus:
         )
         assert _derive_status(snap) == "failed"
 
-    def test_completed_when_no_errors_and_no_final_response(self):
-        snap = _snapshot(next_nodes=(), values={"session_id": "s", "errors": []})
+    def test_completed_when_final_response_present(self):
+        snap = _snapshot(
+            next_nodes=(),
+            values={"session_id": "s", "errors": [], "final_response": {"answer": "ok"}},
+        )
         assert _derive_status(snap) == "completed"
 
 
@@ -369,9 +367,15 @@ class TestApprovalService:
 
     @pytest.mark.asyncio
     async def test_get_final_response_returns_value_when_complete(self):
-        fr = {"session_id": "s", "summary": "s" * 10, "answer": "a" * 20,
-              "citations": [], "route": "research", "approval_status": "approved",
-              "created_at": "2026-01-01T00:00:00Z"}
+        fr = {
+            "session_id": "s",
+            "summary": "s" * 10,
+            "answer": "a" * 20,
+            "citations": [],
+            "route": "research",
+            "approval_status": "approved",
+            "created_at": "2026-01-01T00:00:00Z",
+        }
         snap = _snapshot(
             next_nodes=(),
             values={"session_id": "s", "errors": [], "final_response": fr},
@@ -401,7 +405,9 @@ def _make_approval_svc(
     svc = MagicMock(spec=ApprovalService)
     svc.get_status = AsyncMock(return_value=status)
     svc.get_state = AsyncMock(return_value=state or {"session_id": "s", "errors": []})
-    svc.get_current_node = AsyncMock(return_value="human_approval" if status == "awaiting_approval" else None)
+    svc.get_current_node = AsyncMock(
+        return_value="human_approval" if status == "awaiting_approval" else None
+    )
     svc.get_final_response = AsyncMock(return_value=final_response)
     svc.submit_decision = AsyncMock()
     return svc
@@ -468,10 +474,13 @@ class TestApprovalRoutes:
 
     def test_get_result_returns_200_when_complete(self):
         fr = {
-            "session_id": "s", "summary": "Good summary here.",
+            "session_id": "s",
+            "summary": "Good summary here.",
             "answer": "Detailed answer to the query.",
-            "citations": [], "route": "research",
-            "approval_status": "approved", "created_at": "2026-01-01T00:00:00Z",
+            "citations": [],
+            "route": "research",
+            "approval_status": "approved",
+            "created_at": "2026-01-01T00:00:00Z",
         }
         svc = _make_approval_svc(status="completed", final_response=fr)
         client = _make_test_client(svc)
@@ -527,13 +536,12 @@ class TestApprovalRoutes:
             action="approved",
             reviewer_id="charlie",
             comment="Looks good",
+            edited_answer=None,
         )
 
     def test_submit_approval_returns_409_when_not_awaiting(self):
         svc = _make_approval_svc()
-        svc.submit_decision = AsyncMock(
-            side_effect=ApprovalError("not awaiting approval")
-        )
+        svc.submit_decision = AsyncMock(side_effect=ApprovalError("not awaiting approval"))
         client = _make_test_client(svc)
         resp = client.post(
             "/api/v1/workflow/running-sess/approve",

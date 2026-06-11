@@ -16,6 +16,8 @@ The conditional edge (_approval_decision) runs after the node and routes:
   "rejected"  → END
 """
 
+from typing import Any
+
 from app.core.logging import get_logger
 from app.graph.state import AppState, make_error
 
@@ -24,7 +26,7 @@ _logger = get_logger(__name__)
 _NODE = "human_approval"
 
 
-async def human_approval_node(state: AppState) -> dict:
+async def human_approval_node(state: AppState) -> dict[str, Any]:
     """Record the reviewer's decision and yield control to the conditional edge.
 
     Reads

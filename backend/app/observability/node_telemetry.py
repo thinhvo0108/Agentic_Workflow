@@ -25,7 +25,6 @@ from collections.abc import Callable, Coroutine
 from typing import Any
 
 import structlog
-from opentelemetry import trace
 from opentelemetry.trace import Status, StatusCode
 
 from app.core.logging import get_logger
@@ -40,8 +39,8 @@ _TRACER_NAME = "app.workflow.nodes"
 
 def observe_node(
     name: str,
-    func: Callable[[AppState], Coroutine[Any, Any, dict]],
-) -> Callable[[AppState], Coroutine[Any, Any, dict]]:
+    func: Callable[[AppState], Coroutine[Any, Any, dict[str, Any]]],
+) -> Callable[[AppState], Coroutine[Any, Any, dict[str, Any]]]:
     """Return *func* wrapped with OTel span, timing, and error metrics.
 
     The wrapper is transparent:
@@ -50,7 +49,7 @@ def observe_node(
     """
 
     @functools.wraps(func)
-    async def _observed(state: AppState) -> dict:
+    async def _observed(state: AppState) -> dict[str, Any]:
         tracer = get_tracer(_TRACER_NAME)
         session_id = state.get("session_id", "")
         route = state.get("route") or "unknown"
@@ -100,8 +99,6 @@ def observe_node(
 
             finally:
                 if ctx.is_valid:
-                    structlog.contextvars.unbind_contextvars(
-                        "trace_id", "span_id", "node"
-                    )
+                    structlog.contextvars.unbind_contextvars("trace_id", "span_id", "node")
 
     return _observed

@@ -16,14 +16,11 @@ import pytest
 from app.graph.state import RankedDocument, RetrievedDocument
 from app.services.confidence import _clamp, score_answer, score_overall, score_retrieval
 
-
 # ── Factories ──────────────────────────────────────────────────────────────────
 
 
 def _rdoc(score: float, doc_id: str = "d1") -> RetrievedDocument:
-    return RetrievedDocument(
-        id=doc_id, content="text", source="src", metadata={}, score=score
-    )
+    return RetrievedDocument(id=doc_id, content="text", source="src", metadata={}, score=score)
 
 
 def _ranked(rerank_score: float, doc_id: str = "d1") -> RankedDocument:
@@ -118,7 +115,7 @@ class TestScoreRetrieval:
         # mean = 1.3 / 1.833 ≈ 0.7091
         docs = [_rdoc(0.9, "d1"), _rdoc(0.6, "d2"), _rdoc(0.3, "d3")]
         weights = [1.0, 0.5, 1 / 3]
-        expected = sum(w * s for w, s in zip(weights, [0.9, 0.6, 0.3])) / sum(weights)
+        expected = sum(w * s for w, s in zip(weights, [0.9, 0.6, 0.3], strict=False)) / sum(weights)
         assert score_retrieval(docs) == pytest.approx(expected, abs=1e-3)
 
 
@@ -138,18 +135,17 @@ class TestScoreAnswer:
     def test_zero_score(self):
         assert score_answer([_ranked(0.0), _ranked(0.0)]) == pytest.approx(0.0)
 
-    def test_mean_of_three(self):
+    def test_max_of_three(self):
         docs = [_ranked(0.8, "d1"), _ranked(0.6, "d2"), _ranked(0.4, "d3")]
-        expected = (0.8 + 0.6 + 0.4) / 3
-        assert score_answer(docs) == pytest.approx(expected, abs=1e-3)
+        assert score_answer(docs) == pytest.approx(0.8, abs=1e-3)
 
     def test_result_always_in_unit_interval(self):
         docs = [_ranked(0.9), _ranked(0.7), _ranked(0.55)]
         result = score_answer(docs)
         assert 0.0 <= result <= 1.0
 
-    def test_order_does_not_affect_mean(self):
-        # Unlike retrieval, answer confidence is a simple mean (order-independent).
+    def test_order_does_not_affect_result(self):
+        # max() is order-independent, same as mean was.
         docs_asc = [_ranked(0.3, "d1"), _ranked(0.6, "d2"), _ranked(0.9, "d3")]
         docs_desc = [_ranked(0.9, "d1"), _ranked(0.6, "d2"), _ranked(0.3, "d3")]
         assert score_answer(docs_asc) == pytest.approx(score_answer(docs_desc))

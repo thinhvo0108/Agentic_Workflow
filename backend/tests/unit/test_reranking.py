@@ -24,14 +24,11 @@ from app.graph.nodes.reranker import reranker_node
 from app.graph.state import AppState, RankedDocument, RetrievedDocument, initial_state
 from app.rag.reranker import RerankerService, _sigmoid, _to_ranked
 
-
 # ── Fixtures ───────────────────────────────────────────────────────────────────
 
 
 def _make_doc(doc_id: str = "d1", content: str = "text", score: float = 0.8) -> RetrievedDocument:
-    return RetrievedDocument(
-        id=doc_id, content=content, source="src", metadata={}, score=score
-    )
+    return RetrievedDocument(id=doc_id, content=content, source="src", metadata={}, score=score)
 
 
 def _make_docs(n: int, base_score: float = 0.9) -> list[RetrievedDocument]:
@@ -115,8 +112,14 @@ class TestToRanked:
 
     def test_all_fields_present(self):
         ranked = _to_ranked(_make_doc(), 0.5)
-        assert set(ranked.keys()) == {"id", "content", "source", "metadata",
-                                       "retrieval_score", "rerank_score"}
+        assert set(ranked.keys()) == {
+            "id",
+            "content",
+            "source",
+            "metadata",
+            "retrieval_score",
+            "rerank_score",
+        }
 
 
 # ── RerankerService ───────────────────────────────────────────────────────────
@@ -247,8 +250,12 @@ class TestRerankerService:
 class TestRerankerNode:
     def _ranked_doc(self, doc_id: str = "r1", score: float = 0.9) -> RankedDocument:
         return RankedDocument(
-            id=doc_id, content="text", source="s", metadata={},
-            retrieval_score=0.8, rerank_score=score,
+            id=doc_id,
+            content="text",
+            source="s",
+            metadata={},
+            retrieval_score=0.8,
+            rerank_score=score,
         )
 
     def _state_with_docs(self, n: int = 5) -> AppState:

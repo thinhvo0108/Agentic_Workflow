@@ -1,4 +1,4 @@
-import json
+from typing import Any
 
 from app.agents.research_agent import ResearchOutput
 from app.core.logging import get_logger
@@ -10,7 +10,7 @@ _logger = get_logger(__name__)
 _NODE = "structured_output"
 
 
-async def structured_output_node(state: AppState) -> dict:
+async def structured_output_node(state: AppState) -> dict[str, Any]:
     """Validate the draft JSON and convert it to a StructuredOutput TypedDict.
 
     The draft produced by the generator node is already Pydantic-validated JSON,

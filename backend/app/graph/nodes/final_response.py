@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from typing import Any
 
 from app.core.logging import get_logger
 from app.graph.state import AppState, Citation, ConfidenceScores, FinalResponse, make_error
@@ -11,7 +12,7 @@ _logger = get_logger(__name__)
 _NODE = "final_response"
 
 
-async def final_response_node(state: AppState) -> dict:
+async def final_response_node(state: AppState) -> dict[str, Any]:
     """Assemble the approved FinalResponse from structured_output.
 
     Reads
@@ -58,7 +59,7 @@ async def final_response_node(state: AppState) -> dict:
         overall=score_overall(router_conf, retrieval_conf, answer_conf),
     )
 
-    record = state.get("approval_record") or {}
+    record: dict[str, Any] = dict(state.get("approval_record") or {})
     response = FinalResponse(
         session_id=state["session_id"],
         summary=so.get("summary", ""),

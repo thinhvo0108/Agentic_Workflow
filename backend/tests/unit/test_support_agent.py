@@ -17,8 +17,7 @@ TestSupportNode            — support_node() state contract
 TestGeneratorNodeRouting   — generator_node() route dispatch (research vs support)
 """
 
-import json
-from unittest.mock import AsyncMock, MagicMock, call, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from pydantic import ValidationError
@@ -35,7 +34,6 @@ from app.core.exceptions import LLMError
 from app.graph.nodes.generator import generator_node
 from app.graph.nodes.support import support_node
 from app.graph.state import AppState, RankedDocument, initial_state
-
 
 # ── Factories ──────────────────────────────────────────────────────────────────
 
@@ -76,8 +74,12 @@ def _ranked_doc(
     rerank_score: float = 0.91,
 ) -> RankedDocument:
     return RankedDocument(
-        id=doc_id, content=content, source="kb.txt",
-        metadata={}, retrieval_score=0.8, rerank_score=rerank_score,
+        id=doc_id,
+        content=content,
+        source="kb.txt",
+        metadata={},
+        retrieval_score=0.8,
+        rerank_score=rerank_score,
     )
 
 
@@ -146,22 +148,28 @@ class TestConfidenceAssessment:
     def test_rejects_confidence_above_one(self):
         with pytest.raises(ValidationError):
             ConfidenceAssessment(
-                can_answer_directly=True, confidence=1.1,
-                answer_type="faq", reasoning="test",
+                can_answer_directly=True,
+                confidence=1.1,
+                answer_type="faq",
+                reasoning="test",
             )
 
     def test_rejects_confidence_below_zero(self):
         with pytest.raises(ValidationError):
             ConfidenceAssessment(
-                can_answer_directly=True, confidence=-0.1,
-                answer_type="faq", reasoning="test",
+                can_answer_directly=True,
+                confidence=-0.1,
+                answer_type="faq",
+                reasoning="test",
             )
 
     def test_rejects_short_reasoning(self):
         with pytest.raises(ValidationError):
             ConfidenceAssessment(
-                can_answer_directly=True, confidence=0.8,
-                answer_type="faq", reasoning="x",
+                can_answer_directly=True,
+                confidence=0.8,
+                answer_type="faq",
+                reasoning="x",
             )
 
     def test_accepts_boundary_confidence_values(self):
@@ -191,15 +199,11 @@ class TestSupportOutput:
         assert so.confidence == pytest.approx(0.77)
 
     def test_defaults_retrieval_used_to_false(self):
-        so = SupportOutput(
-            summary="a" * 10, answer="b" * 20, citations=[]
-        )
+        so = SupportOutput(summary="a" * 10, answer="b" * 20, citations=[])
         assert so.retrieval_used is False
 
     def test_defaults_confidence_to_zero(self):
-        so = SupportOutput(
-            summary="a" * 10, answer="b" * 20, citations=[]
-        )
+        so = SupportOutput(summary="a" * 10, answer="b" * 20, citations=[])
         assert so.confidence == pytest.approx(0.0)
 
     def test_validates_as_research_output_from_json(self):
@@ -262,9 +266,11 @@ class TestSupportAgentGenerate:
 
     @pytest.mark.asyncio
     async def test_direct_path_sets_retrieval_used_false(self):
+        # Direct path only triggers when no high-quality docs exist (rerank < 0.5).
+        # Pass empty docs to guarantee the direct-generation branch is taken.
         assessment = _assessment(can_answer=True, confidence=0.9, answer_type="faq")
         agent = SupportAgent(llm=_mock_llm(assessment, _support_output()))
-        result = await agent.generate("reset password", [_ranked_doc()])
+        result = await agent.generate("reset password", [])
         assert result.retrieval_used is False
 
     @pytest.mark.asyncio
@@ -302,8 +308,10 @@ class TestSupportAgentGenerate:
         doc = _ranked_doc(doc_id="kb-001", rerank_score=0.95)
         assessment = _assessment(can_answer=False, confidence=0.3, answer_type="requires_context")
         citation = CitationOutput(
-            document_id="kb-001", source="kb.txt",
-            excerpt="Reset via Settings > Security.", rerank_score=0.0,
+            document_id="kb-001",
+            source="kb.txt",
+            excerpt="Reset via Settings > Security.",
+            rerank_score=0.0,
         )
         output = _support_output(citations=[citation])
         agent = SupportAgent(llm=_mock_llm(assessment, output))
@@ -550,31 +558,31 @@ class TestGeneratorNodeRouting:
         mock_svc = AsyncMock()
         mock_svc.generate.return_value = output
         with patch("app.graph.nodes.generator.SupportAgent", return_value=mock_svc):
-            update = await generator_node(_state_with_route("support"))
+            await generator_node(_state_with_route("support"))
         mock_svc.generate.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_uses_research_agent_for_research_route(self):
         from app.agents.research_agent import ResearchOutput
-        output = ResearchOutput(
-            summary="a" * 10, answer="b" * 20, citations=[]
-        )
+
+        output = ResearchOutput(summary="a" * 10, answer="b" * 20, citations=[])
         mock_svc = AsyncMock()
         mock_svc.generate.return_value = output
         with patch("app.graph.nodes.generator.ResearchAgent", return_value=mock_svc):
-            update = await generator_node(_state_with_route("research"))
+            await generator_node(_state_with_route("research"))
         mock_svc.generate.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_uses_research_agent_when_route_absent(self):
         from app.agents.research_agent import ResearchOutput
+
         output = ResearchOutput(summary="a" * 10, answer="b" * 20, citations=[])
         mock_svc = AsyncMock()
         mock_svc.generate.return_value = output
         state = _state_with_docs()
         # no route key set
         with patch("app.graph.nodes.generator.ResearchAgent", return_value=mock_svc):
-            update = await generator_node(state)
+            await generator_node(state)
         mock_svc.generate.assert_called_once()
 
     @pytest.mark.asyncio
@@ -586,6 +594,7 @@ class TestGeneratorNodeRouting:
         with patch("app.graph.nodes.generator.SupportAgent", return_value=mock_svc):
             update = await generator_node(_state_with_route("support"))
         from app.agents.research_agent import ResearchOutput
+
         parsed = ResearchOutput.model_validate_json(update["draft_response"])
         assert parsed.summary == output.summary
 
