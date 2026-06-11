@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# Pre-commit hook: runs frontend or backend checks based on which files are staged.
+# Install once with: git config core.hooksPath .githooks
+set -euo pipefail
+
+STAGED=$(git diff --cached --name-only --diff-filter=ACMR)
+
+FRONTEND_CHANGED=$(echo "$STAGED" | grep -E "^frontend/" || true)
+BACKEND_PY_CHANGED=$(echo "$STAGED" | grep -E "^backend/.*\.py$" || true)
+
+FAILED=0
+
+# ── Frontend: TypeScript type-check ──────────────────────────────────────────
+if [ -n "$FRONTEND_CHANGED" ]; then
+  echo "▶ frontend files staged — running tsc..."
+  if (cd frontend && npm run lint --silent); then
+    echo "  ✓ tsc passed"
+  else
+    echo "  ✗ tsc failed"
+    FAILED=1
+  fi
+fi
+
+# ── Backend: ruff lint + mypy type-check ─────────────────────────────────────
+if [ -n "$BACKEND_PY_CHANGED" ]; then
+  echo "▶ backend Python files staged — running ruff + mypy..."
+
+  # Pass only the changed files to ruff (fast); mypy checks the whole app module.
+  RUFF_TARGETS=$(echo "$BACKEND_PY_CHANGED" | tr '\n' ' ')
+
+  if (cd backend && uv run ruff check $RUFF_TARGETS); then
+    echo "  ✓ ruff passed"
+  else
+    echo "  ✗ ruff failed"
+    FAILED=1
+  fi
+
+  if (cd backend && uv run mypy app/); then
+    echo "  ✓ mypy passed"
+  else
+    echo "  ✗ mypy failed"
+    FAILED=1
+  fi
+fi
+
+if [ "$FAILED" -ne 0 ]; then
+  echo ""
+  echo "Pre-commit checks failed. Fix the issues above and re-stage your files."
+  exit 1
+fi
+
+exit 0
