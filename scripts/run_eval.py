@@ -142,10 +142,17 @@ async def _poll(
     timeout: float,
 ) -> str:
     deadline = time.monotonic() + timeout
+    first_seen = time.monotonic()
     while True:
         r = await client.get(f"{base_url}/api/v1/workflow/{session_id}", timeout=10.0)
         r.raise_for_status()
         status = r.json()["status"]
+        # LangGraph writes the first checkpoint only after the first node completes.
+        # With concurrency > 1 and a single-threaded Ollama, that first node call
+        # may be queued for 30–60 s.  Treat early not_found as transient.
+        if status == "not_found" and time.monotonic() - first_seen < 60:
+            await asyncio.sleep(POLL_INTERVAL)
+            continue
         if status != "running":
             return status
         if time.monotonic() >= deadline:
@@ -348,8 +355,8 @@ async def _main() -> int:
     ap.add_argument("--ollama-url",  default=DEFAULT_OLLAMA_URL, help="Ollama base URL")
     ap.add_argument("--dataset",     type=Path, default=DEFAULT_DATASET,    help="YAML dataset path")
     ap.add_argument("--output",      type=Path, default=DEFAULT_OUTPUT_DIR, help="Results dir")
-    ap.add_argument("--concurrency", type=int,   default=2,    help="Parallel workflow cases")
-    ap.add_argument("--timeout",     type=float, default=300.0, help="Seconds per case")
+    ap.add_argument("--concurrency", type=int,   default=1,    help="Parallel workflow cases (keep 1 for local Ollama)")
+    ap.add_argument("--timeout",     type=float, default=600.0, help="Seconds per case")
     ap.add_argument("--no-ragas",    action="store_true",       help="Skip RAGAS scoring")
     args = ap.parse_args()
 
