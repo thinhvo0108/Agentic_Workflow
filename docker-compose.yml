@@ -116,6 +116,21 @@ services:
       start_period: 15s
     restart: unless-stopped
 
+  # Seeds both agent knowledge-base collections with sample documents on every
+  # stack start. Chunk IDs are deterministic (SHA-256) so re-running is a
+  # fast upsert — no duplicates are created.
+  # restart: on-failure retries if the backend health check races ahead of
+  # the embedding model being ready.
+  seed:
+    image: curlimages/curl:latest
+    entrypoint: ["/bin/sh", "/scripts/seed_kb.sh"]
+    volumes:
+      - ./scripts:/scripts:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: on-failure
+
   # Pulls required models into the shared ollama_data volume.
   # Exits 0 on success so backend's service_completed_successfully gate works.
   # restart: on-failure retries on transient network errors; once models are

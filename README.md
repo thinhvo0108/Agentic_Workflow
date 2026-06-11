@@ -9,11 +9,13 @@ Built to demonstrate the engineering patterns used in enterprise AI systems: mul
 ## Quick Start
 
 ```bash
-# Start everything — models are downloaded automatically on first run
+# Start everything — models are downloaded and the knowledge base is seeded automatically
 docker compose up --build
 ```
 
 > **Environment:** a `.env` file with working defaults is already committed to the repo, so no configuration is needed to get started. If you want to customise settings (model, ports, credentials), copy `backend/.env.example` over `backend/.env` and edit as needed — or just edit `.env` directly.
+
+> **Knowledge base:** a `seed` service runs automatically after the backend is healthy and loads sample documents into both agent collections (`research` and `support`). The seed is idempotent — re-running `docker compose up` never creates duplicates. You can add more documents via the ingest API or through the human approval step, which stores each approved Q&A pair back into the relevant collection.
 
 Open **http://localhost:5173** and start sending queries.
 
@@ -353,6 +355,7 @@ curl -X POST http://localhost:8000/api/v1/ingest \
 
 # Support-specific document
 curl -X POST http://localhost:8000/api/v1/ingest \
+  -H "Content-Type: application/json" \
   -d '{"agent_type": "support", "documents": [...]}'
 ```
 
