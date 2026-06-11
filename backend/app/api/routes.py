@@ -23,6 +23,7 @@ POST /api/v1/workflow/{session_id}/approve
 import asyncio
 import uuid
 from datetime import UTC, datetime
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
@@ -71,8 +72,8 @@ def _now() -> datetime:
 )
 async def submit_workflow(
     request: WorkflowRequest,
-    approval_svc: ApprovalService = Depends(get_approval_service),
-    workflow=Depends(get_workflow),
+    approval_svc: ApprovalService = Depends(get_approval_service),  # noqa: B008
+    workflow: Any = Depends(get_workflow),  # noqa: B008
 ) -> WorkflowStatusResponse:
     """Start the workflow asynchronously.
 
@@ -87,13 +88,11 @@ async def submit_workflow(
     )
     config = {"configurable": {"thread_id": session_id}}
 
-    async def _run():
+    async def _run() -> None:
         try:
             await workflow.ainvoke(state, config)
         except Exception as exc:
-            _logger.error(
-                "background_workflow_failed", session_id=session_id, error=str(exc)
-            )
+            _logger.error("background_workflow_failed", session_id=session_id, error=str(exc))
 
     task = asyncio.create_task(_run())
     track_task(session_id, task)
@@ -119,7 +118,7 @@ async def submit_workflow(
 )
 async def get_workflow_status(
     session_id: str,
-    approval_svc: ApprovalService = Depends(get_approval_service),
+    approval_svc: ApprovalService = Depends(get_approval_service),  # noqa: B008
 ) -> WorkflowStatusResponse:
     """Poll for workflow progress.
 
@@ -143,7 +142,7 @@ async def get_workflow_status(
 
     return WorkflowStatusResponse(
         session_id=session_id,
-        status=wf_status,  # type: ignore[arg-type]
+        status=wf_status,
         current_node=current_node,
         error=error,
         created_at=_now(),
@@ -161,7 +160,7 @@ async def get_workflow_status(
 )
 async def get_workflow_result(
     session_id: str,
-    approval_svc: ApprovalService = Depends(get_approval_service),
+    approval_svc: ApprovalService = Depends(get_approval_service),  # noqa: B008
 ) -> WorkflowResponse:
     """Return the approved answer.
 
@@ -249,7 +248,7 @@ async def get_workflow_result(
 )
 async def get_workflow_draft(
     session_id: str,
-    approval_svc: ApprovalService = Depends(get_approval_service),
+    approval_svc: ApprovalService = Depends(get_approval_service),  # noqa: B008
 ) -> DraftResponse:
     """Return the structured output available for the approver to review.
 
@@ -257,7 +256,9 @@ async def get_workflow_draft(
     """
     state = await approval_svc.get_state(session_id)
     if state is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Session '{session_id}' not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Session '{session_id}' not found"
+        )
 
     so = state.get("structured_output")
     if so is None:
@@ -276,17 +277,21 @@ async def get_workflow_draft(
         for c in (so.get("citations") or [])
     ]
 
-    conf_data = state.get("confidence") or {}
     router_conf = float(state.get("router_confidence") or 0.0)
     retrieval_conf = float(state.get("retrieval_confidence") or 0.0)
     answer_conf = float(state.get("answer_confidence") or 0.0)
     from app.services.confidence import score_overall
-    api_confidence = ConfidenceScores(
-        router=router_conf,
-        retrieval=retrieval_conf,
-        answer=answer_conf,
-        overall=score_overall(router_conf, retrieval_conf, answer_conf),
-    ) if any([router_conf, retrieval_conf, answer_conf]) else None
+
+    api_confidence = (
+        ConfidenceScores(
+            router=router_conf,
+            retrieval=retrieval_conf,
+            answer=answer_conf,
+            overall=score_overall(router_conf, retrieval_conf, answer_conf),
+        )
+        if any([router_conf, retrieval_conf, answer_conf])
+        else None
+    )
 
     gnd_data = state.get("groundedness")
     api_groundedness: GroundednessResult | None = None
@@ -347,7 +352,7 @@ async def get_workflow_draft(
 async def submit_approval(
     session_id: str,
     request: ApprovalRequest,
-    approval_svc: ApprovalService = Depends(get_approval_service),
+    approval_svc: ApprovalService = Depends(get_approval_service),  # noqa: B008
 ) -> ApprovalResponse:
     """Inject a reviewer decision and resume the workflow.
 
@@ -373,7 +378,7 @@ async def submit_approval(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=str(exc),
-        )
+        ) from exc
 
     _logger.info(
         "approval_api_complete",
@@ -397,13 +402,13 @@ async def submit_approval(
     status_code=status.HTTP_200_OK,
     summary="Ingest documents into the knowledge base",
 )
-async def ingest_documents(request: IngestRequest) -> dict:
+async def ingest_documents(request: IngestRequest) -> dict[str, Any]:
     """Split, embed, and upsert documents into ChromaDB.
 
     Re-ingesting the same source is safe — chunk IDs are deterministic so
     existing entries are updated rather than duplicated.
     """
-    from app.rag.ingestion import IngestionPipeline, IngestDocument
+    from app.rag.ingestion import IngestDocument, IngestionPipeline
 
     docs: list[IngestDocument] = [
         IngestDocument(
@@ -416,6 +421,7 @@ async def ingest_documents(request: IngestRequest) -> dict:
 
     try:
         from app.core.config import get_settings
+
         collection_name: str | None = None
         if request.agent_type:
             collection_name = get_settings().chroma.collection_for(request.agent_type)
@@ -425,7 +431,7 @@ async def ingest_documents(request: IngestRequest) -> dict:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=str(exc),
-        )
+        ) from exc
 
     _logger.info("ingest_complete", doc_count=len(docs), chunk_count=chunk_count)
     return {"documents_ingested": len(docs), "chunks_stored": chunk_count}

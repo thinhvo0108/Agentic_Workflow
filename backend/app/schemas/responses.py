@@ -14,10 +14,18 @@ class Citation(BaseModel):
 class ConfidenceScores(BaseModel):
     """Per-stage confidence signals for a completed workflow run."""
 
-    router: float = Field(ge=0.0, le=1.0, description="Routing classification confidence (LLM self-reported)")
-    retrieval: float = Field(ge=0.0, le=1.0, description="Position-weighted mean of similarity scores")
-    answer: float = Field(ge=0.0, le=1.0, description="Mean rerank score of context used for generation")
-    overall: float = Field(ge=0.0, le=1.0, description="Weighted combination: router 20%, retrieval 30%, answer 50%")
+    router: float = Field(
+        ge=0.0, le=1.0, description="Routing classification confidence (LLM self-reported)"
+    )
+    retrieval: float = Field(
+        ge=0.0, le=1.0, description="Position-weighted mean of similarity scores"
+    )
+    answer: float = Field(
+        ge=0.0, le=1.0, description="Mean rerank score of context used for generation"
+    )
+    overall: float = Field(
+        ge=0.0, le=1.0, description="Weighted combination: router 20%, retrieval 30%, answer 50%"
+    )
 
 
 class EvaluatedClaim(BaseModel):
@@ -33,7 +41,8 @@ class GroundednessResult(BaseModel):
     """LLM-based evaluation of whether the answer is grounded in source documents."""
 
     groundedness_score: float = Field(
-        ge=0.0, le=1.0,
+        ge=0.0,
+        le=1.0,
         description="Fraction of supported claims: len(supported) / total_claims",
     )
     supported_claims: list[EvaluatedClaim] = Field(default_factory=list)
@@ -81,7 +90,9 @@ class WorkflowResponse(BaseModel):
 
 class WorkflowStatusResponse(BaseModel):
     session_id: str
-    status: Literal["running", "awaiting_approval", "approved", "rejected", "failed", "completed", "not_found"]
+    status: Literal[
+        "running", "awaiting_approval", "approved", "rejected", "failed", "completed", "not_found"
+    ]
     current_node: str | None = None
     error: str | None = None
     created_at: datetime

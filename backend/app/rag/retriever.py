@@ -35,12 +35,10 @@ def _parse_chroma_results(results: dict[str, Any]) -> list[RetrievedDocument]:
     distances: list[float] = results.get("distances", [[]])[0]
 
     parsed: list[RetrievedDocument] = []
-    for doc_id, content, metadata, distance in zip(ids, documents, metadatas, distances):
+    for doc_id, content, metadata, distance in zip(ids, documents, metadatas, distances, strict=False):
         if content is None:
             continue
-        meta: dict[str, str] = {
-            k: str(v) for k, v in (metadata or {}).items()
-        }
+        meta: dict[str, str] = {k: str(v) for k, v in (metadata or {}).items()}
         parsed.append(
             RetrievedDocument(
                 id=doc_id,
@@ -74,9 +72,7 @@ class RetrieverService:
         self._store = vector_store or VectorStoreClient(collection_name=collection_name)
         self._embeddings = embedding_service or EmbeddingService()
 
-    async def retrieve(
-        self, query: str, top_k: int | None = None
-    ) -> list[RetrievedDocument]:
+    async def retrieve(self, query: str, top_k: int | None = None) -> list[RetrievedDocument]:
         """Return up to *top_k* documents most relevant to *query*.
 
         Parameters

@@ -90,9 +90,7 @@ class PostgresCheckpointStore:
             If setup() has not been called yet.
         """
         if self._repository is None:
-            raise CheckpointError(
-                "CheckpointRepository is not initialised — call setup() first"
-            )
+            raise CheckpointError("CheckpointRepository is not initialised — call setup() first")
         return self._repository
 
     # ── LangGraph checkpointer ─────────────────────────────────────────────────
@@ -106,9 +104,7 @@ class PostgresCheckpointStore:
             If setup() has not been called yet.
         """
         if self._langgraph_saver is None:
-            raise CheckpointError(
-                "LangGraph checkpointer is not initialised — call setup() first"
-            )
+            raise CheckpointError("LangGraph checkpointer is not initialised — call setup() first")
         return self._langgraph_saver
 
     # ── Private helpers ────────────────────────────────────────────────────────
@@ -127,9 +123,7 @@ class PostgresCheckpointStore:
                     max_size=pg.pool_size,
                 )
             except Exception as exc:
-                raise CheckpointError(
-                    f"Failed to create asyncpg pool: {exc}"
-                ) from exc
+                raise CheckpointError(f"Failed to create asyncpg pool: {exc}") from exc
 
         self._repository = CheckpointRepository(self._asyncpg_pool)
         await self._repository.setup()
@@ -138,8 +132,7 @@ class PostgresCheckpointStore:
     async def _setup_psycopg_layer(self) -> None:
         pg = self._settings.postgres
         conninfo = (
-            f"host={pg.host} port={pg.port} dbname={pg.db} "
-            f"user={pg.user} password={pg.password}"
+            f"host={pg.host} port={pg.port} dbname={pg.db} user={pg.user} password={pg.password}"
         )
         if self._psycopg_pool is None:
             try:
@@ -151,13 +144,12 @@ class PostgresCheckpointStore:
                 )
                 await self._psycopg_pool.open()
             except Exception as exc:
-                raise CheckpointError(
-                    f"Failed to create psycopg3 pool: {exc}"
-                ) from exc
+                raise CheckpointError(f"Failed to create psycopg3 pool: {exc}") from exc
 
         try:
             from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
-            self._langgraph_saver = AsyncPostgresSaver(self._psycopg_pool)
+
+            self._langgraph_saver = AsyncPostgresSaver(self._psycopg_pool)  # type: ignore[arg-type]
             await self._langgraph_saver.setup()
         except Exception as exc:
             raise CheckpointError(

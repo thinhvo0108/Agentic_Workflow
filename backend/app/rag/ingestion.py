@@ -184,9 +184,7 @@ class IngestionPipeline:
 
     # ── Internals ──────────────────────────────────────────────────────────────
 
-    async def _upsert_batch(
-        self, batch: list[tuple[IngestDocument, int, str]]
-    ) -> int:
+    async def _upsert_batch(self, batch: list[tuple[IngestDocument, int, str]]) -> int:
         texts = [chunk for _, _, chunk in batch]
         ids = [_make_chunk_id(doc["source"], idx, chunk) for doc, idx, chunk in batch]
         metadatas = [_make_chunk_metadata(doc, idx) for doc, idx, _ in batch]

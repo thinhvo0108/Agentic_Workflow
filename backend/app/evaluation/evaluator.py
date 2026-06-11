@@ -16,12 +16,13 @@ classification) is done by the LLM on a binary scale, while the numeric
 aggregation is ours.
 """
 
-from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
+from typing import Any
 
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.runnables import Runnable
 from langchain_ollama import ChatOllama
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from app.core.config import get_settings
 from app.core.exceptions import LLMError
@@ -83,13 +84,13 @@ class GroundednessEvaluator:
 
     def __init__(self, llm: BaseChatModel | None = None) -> None:
         settings = get_settings()
-        _llm: BaseChatModel = llm or ChatOllama(
+        _llm: BaseChatModel = llm or ChatOllama(  # type: ignore[call-arg]
             model=settings.ollama.default_model,
             base_url=settings.ollama.base_url,
             timeout=settings.ollama.timeout,
             temperature=0.0,
         )
-        self._chain: Runnable = _llm.with_structured_output(GroundednessEvaluation)
+        self._chain: Runnable[Any, Any] = _llm.with_structured_output(GroundednessEvaluation)
 
     async def evaluate(
         self,
@@ -122,9 +123,7 @@ class GroundednessEvaluator:
         messages = [
             SystemMessage(content=_SYSTEM_PROMPT),
             HumanMessage(
-                content=_HUMAN_TEMPLATE.format(
-                    query=query, answer=answer, context=context
-                )
+                content=_HUMAN_TEMPLATE.format(query=query, answer=answer, context=context)
             ),
         ]
 
@@ -154,7 +153,7 @@ class GroundednessEvaluator:
         retry=retry_if_exception_type(Exception),
         reraise=True,
     )
-    async def _invoke_with_retry(self, messages: list) -> object:
+    async def _invoke_with_retry(self, messages: list[Any]) -> object:
         return await self._chain.ainvoke(messages)
 
 
@@ -167,10 +166,6 @@ def _build_context(documents: list[RankedDocument]) -> str:
     parts: list[str] = []
     for doc in documents:
         parts.append(
-            f"Document ID: {doc['id']}\n"
-            f"Source: {doc['source']}\n"
-            f"\n"
-            f"{doc['content']}\n"
-            f"{'─' * 60}"
+            f"Document ID: {doc['id']}\nSource: {doc['source']}\n\n{doc['content']}\n{'─' * 60}"
         )
     return "\n\n".join(parts)

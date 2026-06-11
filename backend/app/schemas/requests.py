@@ -3,7 +3,6 @@ from typing import Annotated
 
 from pydantic import BaseModel, Field, field_validator
 
-
 _UNSAFE_PATTERN = re.compile(r"[<>{};`$]")
 
 QueryStr = Annotated[str, Field(min_length=1, max_length=4096)]

@@ -1,3 +1,5 @@
+from typing import Any
+
 from app.agents.router import RouterAgent
 from app.core.exceptions import LLMError
 from app.core.logging import get_logger
@@ -8,7 +10,7 @@ _logger = get_logger(__name__)
 _NODE = "router"
 
 
-async def router_node(state: AppState) -> dict:
+async def router_node(state: AppState) -> dict[str, Any]:
     """Classify the user query and write the routing decision into state.
 
     Returns a partial state update — LangGraph merges it with the existing

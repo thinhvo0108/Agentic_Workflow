@@ -1,3 +1,5 @@
+from typing import Any
+
 from app.core.exceptions import RerankingError
 from app.core.logging import get_logger
 from app.graph.state import AppState, make_error
@@ -8,7 +10,7 @@ _logger = get_logger(__name__)
 _NODE = "reranker"
 
 
-async def reranker_node(state: AppState) -> dict:
+async def reranker_node(state: AppState) -> dict[str, Any]:
     """Score retrieved documents with the CrossEncoder and keep top-N.
 
     Reads

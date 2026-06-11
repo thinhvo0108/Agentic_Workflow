@@ -17,7 +17,6 @@ TestIngestionPipeline     — ingest, delete_source, batch sizing
 TestRetrieverNode         — node state updates, error recording
 """
 
-import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -34,7 +33,6 @@ from app.rag.ingestion import (
 )
 from app.rag.retriever import RetrieverService, _distance_to_score, _parse_chroma_results
 from app.rag.vector_store import VectorStoreClient
-
 
 # ── Factories ──────────────────────────────────────────────────────────────────
 
@@ -420,7 +418,9 @@ class TestIngestionPipeline:
 
     @pytest.mark.asyncio
     async def test_ingest_raises_on_empty_list(self):
-        pipeline = IngestionPipeline(vector_store=_mock_store(), embedding_service=_mock_embedding_service())
+        pipeline = IngestionPipeline(
+            vector_store=_mock_store(), embedding_service=_mock_embedding_service()
+        )
         with pytest.raises(ValueError, match="empty"):
             await pipeline.ingest([])
 
@@ -474,7 +474,9 @@ class TestIngestionPipeline:
     async def test_delete_source_removes_matching_chunks(self):
         col = _mock_collection(ids=["id1", "id2"])
         col.get.return_value = {"ids": ["id1", "id2"]}
-        pipeline = IngestionPipeline(vector_store=_mock_store(col), embedding_service=_mock_embedding_service())
+        pipeline = IngestionPipeline(
+            vector_store=_mock_store(col), embedding_service=_mock_embedding_service()
+        )
 
         deleted = await pipeline.delete_source("test.txt")
 
@@ -485,7 +487,9 @@ class TestIngestionPipeline:
     async def test_delete_source_returns_zero_when_no_chunks(self):
         col = _mock_collection()
         col.get.return_value = {"ids": []}
-        pipeline = IngestionPipeline(vector_store=_mock_store(col), embedding_service=_mock_embedding_service())
+        pipeline = IngestionPipeline(
+            vector_store=_mock_store(col), embedding_service=_mock_embedding_service()
+        )
 
         deleted = await pipeline.delete_source("missing.txt")
         assert deleted == 0
@@ -502,10 +506,18 @@ class TestIngestionPipeline:
         )
         doc = self._make_doc(content="repeatable content")
         await pipeline.ingest([doc])
-        first_ids = col.upsert.call_args.kwargs.get("ids") or col.upsert.call_args[1].get("ids") or col.upsert.call_args[0][0]
+        first_ids = (
+            col.upsert.call_args.kwargs.get("ids")
+            or col.upsert.call_args[1].get("ids")
+            or col.upsert.call_args[0][0]
+        )
 
         await pipeline.ingest([doc])
-        second_ids = col.upsert.call_args.kwargs.get("ids") or col.upsert.call_args[1].get("ids") or col.upsert.call_args[0][0]
+        second_ids = (
+            col.upsert.call_args.kwargs.get("ids")
+            or col.upsert.call_args[1].get("ids")
+            or col.upsert.call_args[0][0]
+        )
 
         assert first_ids == second_ids
 
@@ -517,8 +529,11 @@ class TestRetrieverNode:
     def _make_docs(self, n: int = 2) -> list[RetrievedDocument]:
         return [
             RetrievedDocument(
-                id=f"doc{i}", content=f"content {i}", source="src",
-                metadata={}, score=0.9 - i * 0.1,
+                id=f"doc{i}",
+                content=f"content {i}",
+                source="src",
+                metadata={},
+                score=0.9 - i * 0.1,
             )
             for i in range(n)
         ]

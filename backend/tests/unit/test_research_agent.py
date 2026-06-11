@@ -35,7 +35,6 @@ from app.graph.nodes.research import research_node
 from app.graph.nodes.structured_output import structured_output_node
 from app.graph.state import AppState, RankedDocument, initial_state
 
-
 # ── Factories ──────────────────────────────────────────────────────────────────
 
 
@@ -72,7 +71,7 @@ def _citation(
 def _research_output(
     summary: str = "Transformers are neural networks using attention.",
     answer: str = "Transformers rely on self-attention mechanisms [d1] to encode "
-                  "contextual relationships without recurrence.",
+    "contextual relationships without recurrence.",
     citations: list[CitationOutput] | None = None,
 ) -> ResearchOutput:
     return ResearchOutput(
@@ -122,19 +121,27 @@ class TestCitationOutput:
 
     def test_rejects_score_above_one(self):
         with pytest.raises(ValidationError):
-            CitationOutput(document_id="d1", source="s", excerpt="long enough excerpt", rerank_score=1.1)
+            CitationOutput(
+                document_id="d1", source="s", excerpt="long enough excerpt", rerank_score=1.1
+            )
 
     def test_rejects_score_below_zero(self):
         with pytest.raises(ValidationError):
-            CitationOutput(document_id="d1", source="s", excerpt="long enough excerpt", rerank_score=-0.1)
+            CitationOutput(
+                document_id="d1", source="s", excerpt="long enough excerpt", rerank_score=-0.1
+            )
 
     def test_score_defaults_to_zero_when_not_provided(self):
         c = CitationOutput(document_id="d1", source="s", excerpt="long enough excerpt")
         assert c.rerank_score == pytest.approx(0.0)
 
     def test_accepts_score_at_boundaries(self):
-        c1 = CitationOutput(document_id="d", source="s", excerpt="long enough here", rerank_score=0.0)
-        c2 = CitationOutput(document_id="d", source="s", excerpt="long enough here", rerank_score=1.0)
+        c1 = CitationOutput(
+            document_id="d", source="s", excerpt="long enough here", rerank_score=0.0
+        )
+        c2 = CitationOutput(
+            document_id="d", source="s", excerpt="long enough here", rerank_score=1.0
+        )
         assert c1.rerank_score == pytest.approx(0.0)
         assert c2.rerank_score == pytest.approx(1.0)
 
@@ -272,9 +279,7 @@ class TestResearchAgent:
     @pytest.mark.asyncio
     async def test_citation_scores_overridden_with_document_scores(self):
         doc = _ranked_doc(doc_id="d1", rerank_score=0.97)
-        llm_output = _research_output(
-            citations=[_citation(document_id="d1", rerank_score=0.0)]
-        )
+        llm_output = _research_output(citations=[_citation(document_id="d1", rerank_score=0.0)])
         agent = ResearchAgent(llm=_mock_llm(llm_output))
         result = await agent.generate("query", [doc])
         assert result.citations[0].rerank_score == pytest.approx(0.97)
@@ -477,7 +482,7 @@ class TestGeneratorNode:
         mock_agent = AsyncMock()
         mock_agent.generate.return_value = _research_output()
         with patch("app.graph.nodes.generator.ResearchAgent", return_value=mock_agent):
-            update = await generator_node(s)
+            await generator_node(s)
         _, kwargs = mock_agent.generate.call_args
         assert kwargs["documents"] == []
 
@@ -509,7 +514,9 @@ class TestStructuredOutputNode:
 
     @pytest.mark.asyncio
     async def test_citations_converted_to_typeddict(self):
-        c = _citation(document_id="cite-01", source="src.txt", excerpt="a short quote here", rerank_score=0.88)
+        c = _citation(
+            document_id="cite-01", source="src.txt", excerpt="a short quote here", rerank_score=0.88
+        )
         output = _research_output(citations=[c])
         update = await structured_output_node(_state_with_draft(output))
         citations = update["structured_output"]["citations"]

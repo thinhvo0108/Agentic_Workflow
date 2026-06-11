@@ -13,9 +13,10 @@ interrupt_before pauses execution for a manual decision.
 """
 
 from datetime import UTC, datetime
+from typing import Any
 
 from app.core.logging import get_logger
-from app.graph.state import AppState, ApprovalRecord
+from app.graph.state import ApprovalRecord, AppState
 from app.services.confidence import score_overall
 
 _logger = get_logger(__name__)
@@ -24,7 +25,7 @@ _NODE = "auto_approval_gate"
 AUTO_APPROVE_THRESHOLD = 0.70
 
 
-async def auto_approval_gate_node(state: AppState) -> dict:
+async def auto_approval_gate_node(state: AppState) -> dict[str, Any]:
     """Auto-approve if overall confidence >= 70%; otherwise defer to human review."""
     router_conf = float(state.get("router_confidence") or 0.0)
     retrieval_conf = float(state.get("retrieval_confidence") or 0.0)

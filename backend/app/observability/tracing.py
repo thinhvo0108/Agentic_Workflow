@@ -23,7 +23,6 @@ from opentelemetry.sdk.resources import (
 )
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor, SpanExporter
-from opentelemetry.trace import NoOpTracer
 
 from app.core.config import get_settings
 from app.core.logging import get_logger
@@ -55,8 +54,9 @@ def configure_tracing() -> TracerProvider | None:
 
     if not settings.otel.enabled:
         # Register a no-op provider so span APIs never raise.
-        from opentelemetry.sdk.trace import TracerProvider as _TP
-        noop = _TP(resource=_build_resource())
+        from opentelemetry.sdk.trace import TracerProvider as _TracerProvider
+
+        noop = _TracerProvider(resource=_build_resource())
         trace.set_tracer_provider(noop)
         _logger.info("tracing_disabled")
         return None
@@ -68,6 +68,7 @@ def configure_tracing() -> TracerProvider | None:
         from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
             OTLPSpanExporter,
         )
+
         exporter: SpanExporter = OTLPSpanExporter(
             endpoint=settings.otel.exporter_otlp_endpoint,
             insecure=True,
@@ -75,6 +76,7 @@ def configure_tracing() -> TracerProvider | None:
     except Exception as exc:
         _logger.warning("otlp_exporter_unavailable", error=str(exc))
         from opentelemetry.sdk.trace.export import ConsoleSpanExporter
+
         exporter = ConsoleSpanExporter()
 
     resource = _build_resource()
@@ -95,6 +97,7 @@ def configure_tracing() -> TracerProvider | None:
 def _maybe_instrument_fastapi() -> None:
     try:
         from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+
         FastAPIInstrumentor().instrument()
         _logger.info("fastapi_instrumented")
     except Exception as exc:

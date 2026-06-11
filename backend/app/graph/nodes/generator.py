@@ -1,3 +1,5 @@
+from typing import Any
+
 from app.agents.research_agent import ResearchAgent
 from app.agents.support_agent import SupportAgent
 from app.core.exceptions import LLMError
@@ -9,7 +11,7 @@ _logger = get_logger(__name__)
 _NODE = "generator"
 
 
-async def generator_node(state: AppState) -> dict:
+async def generator_node(state: AppState) -> dict[str, Any]:
     """Generate a cited draft answer dispatching to the correct agent by route.
 
     "support" route → SupportAgent (two-pass: confidence check then adaptive RAG)

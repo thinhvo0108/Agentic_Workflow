@@ -35,7 +35,6 @@ import json
 import os
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
-from typing import Literal
 
 import asyncpg
 import pytest
@@ -133,13 +132,19 @@ def _state(
     if with_reranked:
         s["reranked_documents"] = [
             {
-                "id": f"rk{i}", "content": "c", "source": "s", "metadata": {},
-                "retrieval_score": 0.8, "rerank_score": 0.9,
+                "id": f"rk{i}",
+                "content": "c",
+                "source": "s",
+                "metadata": {},
+                "retrieval_score": 0.8,
+                "rerank_score": 0.9,
             }
             for i in range(2)
         ]
     if with_draft:
-        s["draft_response"] = '{"summary": "xxxxxxxxxx", "answer": "xxxxxxxxxxxxxxxxxxxx", "citations": []}'
+        s["draft_response"] = (
+            '{"summary": "xxxxxxxxxx", "answer": "xxxxxxxxxxxxxxxxxxxx", "citations": []}'
+        )
     if with_so:
         s["structured_output"] = {
             "summary": "Ten chars ok.",
@@ -162,15 +167,21 @@ class TestCheckpointRecord:
     def test_rejects_negative_retrieved_doc_count(self):
         with pytest.raises(ValidationError):
             CheckpointRecord(
-                session_id="s", stage=CheckpointStage.ROUTING,
-                query="q", retrieved_doc_count=-1, state_snapshot={},
+                session_id="s",
+                stage=CheckpointStage.ROUTING,
+                query="q",
+                retrieved_doc_count=-1,
+                state_snapshot={},
             )
 
     def test_rejects_negative_error_count(self):
         with pytest.raises(ValidationError):
             CheckpointRecord(
-                session_id="s", stage=CheckpointStage.ROUTING,
-                query="q", error_count=-1, state_snapshot={},
+                session_id="s",
+                stage=CheckpointStage.ROUTING,
+                query="q",
+                error_count=-1,
+                state_snapshot={},
             )
 
     def test_all_stages_accepted(self):
@@ -179,7 +190,9 @@ class TestCheckpointRecord:
 
     def test_state_snapshot_defaults_to_empty_dict(self):
         r = CheckpointRecord(
-            session_id="s", stage=CheckpointStage.ROUTING, query="q",
+            session_id="s",
+            stage=CheckpointStage.ROUTING,
+            query="q",
         )
         assert r.state_snapshot == {}
 
@@ -341,7 +354,11 @@ class TestCheckpointRepositorySave:
 @pytest.mark.integration
 class TestCheckpointRepositoryList:
     async def test_list_returns_all_records_for_session(self, repo: CheckpointRepository):
-        for stage in [CheckpointStage.ROUTING, CheckpointStage.RETRIEVAL, CheckpointStage.GENERATION]:
+        for stage in [
+            CheckpointStage.ROUTING,
+            CheckpointStage.RETRIEVAL,
+            CheckpointStage.GENERATION,
+        ]:
             await repo.save(_record(session_id="list-sess", stage=stage))
         assert len(await repo.list_by_session("list-sess")) == 3
 
@@ -349,7 +366,11 @@ class TestCheckpointRepositoryList:
         assert await repo.list_by_session("no-such-session") == []
 
     async def test_list_ordered_oldest_first(self, repo: CheckpointRepository):
-        for stage in [CheckpointStage.ROUTING, CheckpointStage.RETRIEVAL, CheckpointStage.GENERATION]:
+        for stage in [
+            CheckpointStage.ROUTING,
+            CheckpointStage.RETRIEVAL,
+            CheckpointStage.GENERATION,
+        ]:
             await repo.save(_record(session_id="order-sess", stage=stage))
         results = await repo.list_by_session("order-sess")
         assert [r.stage for r in results] == [
@@ -404,7 +425,9 @@ class TestCheckpointRepositoryGetByStage:
         await repo.save(_record(session_id="stage-sess2", stage=CheckpointStage.ROUTING))
         assert await repo.get_by_stage("stage-sess2", CheckpointStage.APPROVAL) is None
 
-    async def test_get_by_stage_returns_latest_when_duplicate_stages(self, repo: CheckpointRepository):
+    async def test_get_by_stage_returns_latest_when_duplicate_stages(
+        self, repo: CheckpointRepository
+    ):
         await repo.save(_record(session_id="dup-sess", stage=CheckpointStage.APPROVAL, errors=0))
         await repo.save(_record(session_id="dup-sess", stage=CheckpointStage.APPROVAL, errors=1))
         result = await repo.get_by_stage("dup-sess", CheckpointStage.APPROVAL)
@@ -543,17 +566,31 @@ class TestCheckpointNode:
         # 2. Retrieval
         await checkpoint_node(_state(session_id=sid, route="research", with_retrieved=True))
         # 3. Reranking
-        await checkpoint_node(_state(session_id=sid, route="research",
-                                     with_retrieved=True, with_reranked=True))
+        await checkpoint_node(
+            _state(session_id=sid, route="research", with_retrieved=True, with_reranked=True)
+        )
         # 4. Generation
-        await checkpoint_node(_state(session_id=sid, route="research",
-                                     with_retrieved=True, with_reranked=True, with_so=True))
+        await checkpoint_node(
+            _state(
+                session_id=sid,
+                route="research",
+                with_retrieved=True,
+                with_reranked=True,
+                with_so=True,
+            )
+        )
         # 5. Approval — saved directly via the repository (approval node not yet implemented)
-        await repo.save(CheckpointRecord(
-            session_id=sid, stage=CheckpointStage.APPROVAL, query="test query",
-            route="research", has_structured_output=True,
-            approval_status="approved", state_snapshot={},
-        ))
+        await repo.save(
+            CheckpointRecord(
+                session_id=sid,
+                stage=CheckpointStage.APPROVAL,
+                query="test query",
+                route="research",
+                has_structured_output=True,
+                approval_status="approved",
+                state_snapshot={},
+            )
+        )
 
         assert await repo.count(sid) == 5
 

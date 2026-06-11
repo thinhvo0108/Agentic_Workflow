@@ -26,7 +26,7 @@ import asyncio
 import math
 from typing import Any
 
-from sentence_transformers import CrossEncoder  # type: ignore[import-untyped]
+from sentence_transformers import CrossEncoder
 
 from app.core.config import get_settings
 from app.core.exceptions import RerankingError
@@ -172,8 +172,7 @@ class RerankerService:
 
         # raw_scores may be numpy array; convert element-wise to Python floats
         scored: list[tuple[RetrievedDocument, float]] = [
-            (doc, _sigmoid(float(score)))
-            for doc, score in zip(documents, raw_scores)
+            (doc, _sigmoid(float(score))) for doc, score in zip(documents, raw_scores, strict=False)
         ]
 
         scored.sort(key=lambda t: t[1], reverse=True)

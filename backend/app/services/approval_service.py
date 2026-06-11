@@ -47,7 +47,7 @@ def _derive_status(snapshot: Any | None) -> WorkflowStatus:
     if snapshot is None or not snapshot.values:
         return "not_found"
 
-    next_nodes: tuple = snapshot.next or ()
+    next_nodes: tuple[Any, ...] = snapshot.next or ()
     if "human_approval" in next_nodes:
         return "awaiting_approval"
 
@@ -55,7 +55,7 @@ def _derive_status(snapshot: Any | None) -> WorkflowStatus:
         return "running"
 
     # Graph has finished — inspect final state to classify the outcome.
-    values: dict = snapshot.values
+    values: dict[str, Any] = snapshot.values
     if values.get("final_response") is not None:
         return "completed"
     if values.get("approval_status") == "rejected":
@@ -78,29 +78,29 @@ class ApprovalService:
         A compiled LangGraph graph.  Inject a mock in tests.
     """
 
-    def __init__(self, workflow: CompiledStateGraph) -> None:
+    def __init__(self, workflow: CompiledStateGraph) -> None:  # type: ignore[type-arg]
         self._workflow = workflow
 
     # ── Status ─────────────────────────────────────────────────────────────────
 
     async def get_status(self, session_id: str) -> WorkflowStatus:
         """Return the current status of a workflow session."""
-        config = {"configurable": {"thread_id": session_id}}
-        snapshot = await self._workflow.aget_state(config)
+        config: dict[str, Any] = {"configurable": {"thread_id": session_id}}
+        snapshot = await self._workflow.aget_state(config)  # type: ignore[arg-type]
         return _derive_status(snapshot)
 
-    async def get_state(self, session_id: str) -> dict | None:
+    async def get_state(self, session_id: str) -> dict[str, Any] | None:
         """Return raw state values for a session, or None if not found."""
-        config = {"configurable": {"thread_id": session_id}}
-        snapshot = await self._workflow.aget_state(config)
+        config: dict[str, Any] = {"configurable": {"thread_id": session_id}}
+        snapshot = await self._workflow.aget_state(config)  # type: ignore[arg-type]
         if snapshot is None or not snapshot.values:
             return None
         return dict(snapshot.values)
 
     async def get_current_node(self, session_id: str) -> str | None:
         """Return the name of the next pending node, or None."""
-        config = {"configurable": {"thread_id": session_id}}
-        snapshot = await self._workflow.aget_state(config)
+        config: dict[str, Any] = {"configurable": {"thread_id": session_id}}
+        snapshot = await self._workflow.aget_state(config)  # type: ignore[arg-type]
         if snapshot is None:
             return None
         next_nodes = snapshot.next or ()
@@ -135,17 +135,15 @@ class ApprovalService:
             If the session does not exist or is not awaiting approval.
         """
         if action not in ("approved", "rejected"):
-            raise ApprovalError(
-                f"Invalid action {action!r} — must be 'approved' or 'rejected'"
-            )
+            raise ApprovalError(f"Invalid action {action!r} — must be 'approved' or 'rejected'")
 
-        config = {"configurable": {"thread_id": session_id}}
-        snapshot = await self._workflow.aget_state(config)
+        config: dict[str, Any] = {"configurable": {"thread_id": session_id}}
+        snapshot = await self._workflow.aget_state(config)  # type: ignore[arg-type]
 
         if snapshot is None or not snapshot.values:
             raise ApprovalError(f"Session '{session_id}' not found")
 
-        next_nodes: tuple = snapshot.next or ()
+        next_nodes: tuple[Any, ...] = snapshot.next or ()
         if "human_approval" not in next_nodes:
             raise ApprovalError(
                 f"Session '{session_id}' is not awaiting approval "
@@ -160,7 +158,7 @@ class ApprovalService:
         if comment is not None:
             record["comment"] = comment
 
-        state_update: dict = {"approval_status": action, "approval_record": record}
+        state_update: dict[str, Any] = {"approval_status": action, "approval_record": record}
 
         # If the reviewer supplied an edited answer, overwrite it in structured_output
         # so that final_response_node picks up the reviewer's version.
@@ -170,8 +168,8 @@ class ApprovalService:
             state_update["structured_output"] = existing_so
 
         # Inject decision into state, then resume.
-        await self._workflow.aupdate_state(config, state_update)
-        await self._workflow.ainvoke(None, config)
+        await self._workflow.aupdate_state(config, state_update)  # type: ignore[arg-type]
+        await self._workflow.ainvoke(None, config)  # type: ignore[call-overload]
 
         _logger.info(
             "approval_submitted",

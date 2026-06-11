@@ -34,26 +34,24 @@ TestCheckpointAudit     — checkpoint_node calls repository.save with correct d
 TestVisualization       — visualization module output contracts
 """
 
-import asyncio
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from langgraph.checkpoint.memory import MemorySaver
 
 from app.agents.research_agent import CitationOutput, ResearchOutput
 from app.agents.router import RouteOutput
-from app.agents.support_agent import ConfidenceAssessment, SupportOutput
+from app.agents.support_agent import SupportOutput
 from app.checkpoints.repository import CheckpointRepository
 from app.core.exceptions import LLMError
 from app.graph.nodes.checkpoint import set_repository
 from app.graph.state import (
     RankedDocument,
     RetrievedDocument,
-    StructuredOutput,
     initial_state,
 )
 from app.graph.workflow import build_workflow, compile_workflow
@@ -63,16 +61,22 @@ from app.graph.workflow import build_workflow, compile_workflow
 
 def _retrieved_doc(doc_id: str, score: float = 0.85) -> RetrievedDocument:
     return RetrievedDocument(
-        id=doc_id, content=f"Content for {doc_id}.",
-        source="kb.txt", metadata={}, score=score,
+        id=doc_id,
+        content=f"Content for {doc_id}.",
+        source="kb.txt",
+        metadata={},
+        score=score,
     )
 
 
 def _ranked_doc(doc_id: str, rerank_score: float = 0.92) -> RankedDocument:
     return RankedDocument(
-        id=doc_id, content=f"Content for {doc_id}.",
-        source="kb.txt", metadata={},
-        retrieval_score=0.85, rerank_score=rerank_score,
+        id=doc_id,
+        content=f"Content for {doc_id}.",
+        source="kb.txt",
+        metadata={},
+        retrieval_score=0.85,
+        rerank_score=rerank_score,
     )
 
 
@@ -109,9 +113,7 @@ def _mock_repo() -> AsyncMock:
     repo = AsyncMock(spec=CheckpointRepository)
 
     async def _save(record):
-        return record.model_copy(
-            update={"id": 1, "created_at": datetime.now(UTC)}
-        )
+        return record.model_copy(update={"id": 1, "created_at": datetime.now(UTC)})
 
     repo.save.side_effect = _save
     return repo
@@ -187,6 +189,7 @@ async def _run_to_pause(harness: dict, session_id: str = "s-001", query: str = "
 async def _resume(harness: dict, session_id: str, action: str, reviewer: str = "alice"):
     """Inject an approval decision and resume the workflow."""
     from app.graph.state import ApprovalRecord
+
     wf = harness["workflow"]
     config = {"configurable": {"thread_id": session_id}}
     record: ApprovalRecord = {
@@ -205,6 +208,7 @@ async def _resume(harness: dict, session_id: str, action: str, reviewer: str = "
 class TestGraphStructure:
     def test_build_workflow_returns_state_graph(self):
         from langgraph.graph import StateGraph
+
         assert isinstance(build_workflow(), StateGraph)
 
     def test_compile_workflow_with_memory_saver(self):
@@ -220,9 +224,16 @@ class TestGraphStructure:
         wf = compile_workflow(MemorySaver())
         node_names = set(wf.get_graph().nodes)
         required = {
-            "router", "research", "support", "retriever",
-            "reranker", "generator", "structured_output",
-            "checkpoint", "human_approval", "final_response",
+            "router",
+            "research",
+            "support",
+            "retriever",
+            "reranker",
+            "generator",
+            "structured_output",
+            "checkpoint",
+            "human_approval",
+            "final_response",
         }
         assert required.issubset(node_names)
 
@@ -444,18 +455,14 @@ class TestRejectionPath:
 class TestErrorPaths:
     @pytest.mark.asyncio
     async def test_router_llm_error_terminates_without_reaching_approval(self):
-        async with _workflow_harness(
-            router_raises=LLMError("Ollama unreachable")
-        ) as h:
+        async with _workflow_harness(router_raises=LLMError("Ollama unreachable")) as h:
             snap = await _run_to_pause(h, session_id="s-err-router")
         # Graph should have terminated — no interrupt at human_approval
         assert "human_approval" not in snap.next
 
     @pytest.mark.asyncio
     async def test_router_error_recorded_in_errors_list(self):
-        async with _workflow_harness(
-            router_raises=LLMError("connection refused")
-        ) as h:
+        async with _workflow_harness(router_raises=LLMError("connection refused")) as h:
             snap = await _run_to_pause(h, session_id="s-err-recorded")
         errors = snap.values.get("errors") or []
         assert len(errors) >= 1
@@ -464,9 +471,7 @@ class TestErrorPaths:
 
     @pytest.mark.asyncio
     async def test_router_error_message_in_errors(self):
-        async with _workflow_harness(
-            router_raises=LLMError("timeout after 120s")
-        ) as h:
+        async with _workflow_harness(router_raises=LLMError("timeout after 120s")) as h:
             snap = await _run_to_pause(h, session_id="s-err-msg")
         errors = snap.values.get("errors") or []
         assert any("timeout" in e["message"] for e in errors)
@@ -504,6 +509,7 @@ class TestStateAccumulation:
     @pytest.mark.asyncio
     async def test_draft_response_is_json_string(self):
         import json
+
         async with _workflow_harness("research") as h:
             snap = await _run_to_pause(h)
         draft = snap.values.get("draft_response")
@@ -558,6 +564,7 @@ class TestCheckpointAudit:
     @pytest.mark.asyncio
     async def test_checkpoint_saved_with_generation_stage(self):
         from app.checkpoints.models import CheckpointStage
+
         async with _workflow_harness("research") as h:
             await _run_to_pause(h, session_id="s-stage")
         record = h["repo"].save.call_args[0][0]
@@ -585,39 +592,68 @@ class TestCheckpointAudit:
 class TestVisualization:
     def test_get_node_list_returns_ten_nodes(self):
         from app.graph.visualization import get_node_list
+
         nodes = get_node_list()
         assert len(nodes) == 10
 
     def test_get_node_list_contains_all_names(self):
         from app.graph.visualization import get_node_list
+
         names = set(get_node_list())
         assert names == {
-            "router", "research", "support", "retriever", "reranker",
-            "generator", "structured_output", "checkpoint",
-            "human_approval", "final_response",
+            "router",
+            "research",
+            "support",
+            "retriever",
+            "reranker",
+            "generator",
+            "structured_output",
+            "checkpoint",
+            "human_approval",
+            "final_response",
         }
 
     def test_generate_mermaid_contains_all_nodes(self):
         from app.graph.visualization import generate_mermaid
+
         mermaid = generate_mermaid()
-        for node in ("router", "research", "support", "retriever", "reranker",
-                     "generator", "structured_output", "checkpoint",
-                     "human_approval", "final_response"):
+        for node in (
+            "router",
+            "research",
+            "support",
+            "retriever",
+            "reranker",
+            "generator",
+            "structured_output",
+            "checkpoint",
+            "human_approval",
+            "final_response",
+        ):
             assert node in mermaid
 
     def test_generate_mermaid_marks_interrupt(self):
         from app.graph.visualization import generate_mermaid
+
         assert "interrupt" in generate_mermaid().lower()
 
     def test_generate_ascii_table_has_all_nodes(self):
         from app.graph.visualization import generate_ascii_table
+
         table = generate_ascii_table()
-        for name in ("router", "retriever", "reranker", "generator",
-                     "checkpoint", "human_approval", "final_response"):
+        for name in (
+            "router",
+            "retriever",
+            "reranker",
+            "generator",
+            "checkpoint",
+            "human_approval",
+            "final_response",
+        ):
             assert name in table
 
     def test_generate_flow_narrative_describes_both_paths(self):
         from app.graph.visualization import generate_flow_narrative
+
         narrative = generate_flow_narrative()
         assert "Research path" in narrative
         assert "Support path" in narrative
@@ -625,6 +661,7 @@ class TestVisualization:
 
     def test_generate_full_document_is_valid_markdown(self):
         from app.graph.visualization import generate_full_document
+
         doc = generate_full_document()
         assert doc.startswith("# Agentic Workflow")
         assert "```mermaid" in doc
@@ -633,6 +670,7 @@ class TestVisualization:
 
     def test_get_edge_summary_returns_expected_edges(self):
         from app.graph.visualization import get_edge_summary
+
         edges = get_edge_summary()
         pairs = {(e["source"], e["target"]) for e in edges}
         assert ("retriever", "reranker") in pairs

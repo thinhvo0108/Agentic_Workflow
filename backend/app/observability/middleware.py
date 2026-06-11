@@ -13,6 +13,7 @@ For every HTTP request:
 
 import time
 import uuid
+from typing import Any
 
 import structlog
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -34,7 +35,7 @@ class RequestTracingMiddleware(BaseHTTPMiddleware):
     def __init__(self, app: ASGIApp) -> None:
         super().__init__(app)
 
-    async def dispatch(self, request: Request, call_next) -> Response:
+    async def dispatch(self, request: Request, call_next: Any) -> Response:
         request_id = str(uuid.uuid4())
         structlog.contextvars.bind_contextvars(request_id=request_id)
 
@@ -73,6 +74,7 @@ class RequestTracingMiddleware(BaseHTTPMiddleware):
 def _normalise_path(path: str) -> str:
     """Replace UUID-like path segments with {id} to cap Prometheus cardinality."""
     import re
+
     return re.sub(
         r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
         "{id}",

@@ -1,6 +1,7 @@
 import asyncio
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import AsyncIterator
+from typing import Any
 
 import asyncpg
 from fastapi import FastAPI, Request, status
@@ -46,6 +47,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # healthy immediately.
     try:
         from app.rag.reranker import RerankerService
+
         _logger.info("prewarming_reranker_bg")
         asyncio.create_task(RerankerService().warm_up())
     except Exception as exc:
@@ -91,11 +93,12 @@ def create_app() -> FastAPI:
     def metrics_endpoint() -> Response:
         """Expose Prometheus metrics for scraping by Prometheus / Grafana."""
         from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
+
         return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
     # ── Health ─────────────────────────────────────────────────────────────────
     @app.get("/health", tags=["ops"])
-    async def health() -> dict:
+    async def health() -> dict[str, Any]:
         return {"status": "ok"}
 
     # ── Exception handlers ─────────────────────────────────────────────────────

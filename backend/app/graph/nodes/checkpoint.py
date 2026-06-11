@@ -16,7 +16,6 @@ The module-level _repository can be overridden via set_repository() so
 integration tests can supply a real pool without touching application settings.
 """
 
-import json
 from typing import Any
 
 from app.checkpoints.models import CheckpointRecord, CheckpointStage
@@ -42,9 +41,7 @@ def set_repository(repo: CheckpointRepository | None) -> None:
 
 def _get_repository() -> CheckpointRepository:
     if _repository is None:
-        raise CheckpointError(
-            "CheckpointRepository is not set — call set_repository() at startup"
-        )
+        raise CheckpointError("CheckpointRepository is not set — call set_repository() at startup")
     return _repository
 
 
@@ -76,12 +73,8 @@ def _build_snapshot(state: AppState) -> dict[str, Any]:
         "query": state["query"],
         "route": state.get("route"),
         "step_count": state.get("step_count", 0),
-        "retrieved_doc_ids": [
-            d["id"] for d in (state.get("retrieved_documents") or [])
-        ],
-        "reranked_doc_ids": [
-            d["id"] for d in (state.get("reranked_documents") or [])
-        ],
+        "retrieved_doc_ids": [d["id"] for d in (state.get("retrieved_documents") or [])],
+        "reranked_doc_ids": [d["id"] for d in (state.get("reranked_documents") or [])],
         "has_draft": bool(state.get("draft_response")),
         "has_structured_output": so is not None,
         "approval_status": state.get("approval_status"),
@@ -117,7 +110,7 @@ def _build_record(state: AppState) -> CheckpointRecord:
 # ── Node ───────────────────────────────────────────────────────────────────────
 
 
-async def checkpoint_node(state: AppState) -> dict:
+async def checkpoint_node(state: AppState) -> dict[str, Any]:
     """Persist an audit checkpoint to PostgreSQL.
 
     Reads

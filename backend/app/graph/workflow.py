@@ -67,7 +67,7 @@ def _approval_decision(state: AppState) -> str:
     return "human_approval"
 
 
-def build_workflow() -> StateGraph:
+def build_workflow() -> StateGraph:  # type: ignore[type-arg]
     """Construct the LangGraph state machine (not yet compiled)."""
     from app.graph.nodes.auto_approval import auto_approval_gate_node
     from app.graph.nodes.checkpoint import checkpoint_node
@@ -88,20 +88,22 @@ def build_workflow() -> StateGraph:
 
     # Every node is wrapped with observe_node() — this is the single place
     # where telemetry is applied so no individual node file needs to change.
-    graph.add_node("router",              observe_node("router",              router_node))
-    graph.add_node("research",            observe_node("research",            research_node))
-    graph.add_node("support",             observe_node("support",             support_node))
-    graph.add_node("retriever",           observe_node("retriever",           retriever_node))
-    graph.add_node("reranker",            observe_node("reranker",            reranker_node))
-    graph.add_node("generator",           observe_node("generator",           generator_node))
-    graph.add_node("structured_output",   observe_node("structured_output",   structured_output_node))
-    graph.add_node("groundedness",        observe_node("groundedness",        groundedness_node))
-    graph.add_node("checkpoint",          observe_node("checkpoint",          checkpoint_node))
-    graph.add_node("auto_approval_gate",  observe_node("auto_approval_gate",  auto_approval_gate_node))
-    graph.add_node("web_search",          observe_node("web_search",          web_search_node))
-    graph.add_node("human_approval",      observe_node("human_approval",      human_approval_node))
-    graph.add_node("final_response",      observe_node("final_response",      final_response_node))
-    graph.add_node("knowledge_update",    observe_node("knowledge_update",    knowledge_update_node))
+    graph.add_node("router", observe_node("router", router_node))  # type: ignore[call-overload]
+    graph.add_node("research", observe_node("research", research_node))  # type: ignore[call-overload]
+    graph.add_node("support", observe_node("support", support_node))  # type: ignore[call-overload]
+    graph.add_node("retriever", observe_node("retriever", retriever_node))  # type: ignore[call-overload]
+    graph.add_node("reranker", observe_node("reranker", reranker_node))  # type: ignore[call-overload]
+    graph.add_node("generator", observe_node("generator", generator_node))  # type: ignore[call-overload]
+    graph.add_node("structured_output", observe_node("structured_output", structured_output_node))  # type: ignore[call-overload]
+    graph.add_node("groundedness", observe_node("groundedness", groundedness_node))  # type: ignore[call-overload]
+    graph.add_node("checkpoint", observe_node("checkpoint", checkpoint_node))  # type: ignore[call-overload]
+    graph.add_node(  # type: ignore[call-overload]
+        "auto_approval_gate", observe_node("auto_approval_gate", auto_approval_gate_node)
+    )
+    graph.add_node("web_search", observe_node("web_search", web_search_node))  # type: ignore[call-overload]
+    graph.add_node("human_approval", observe_node("human_approval", human_approval_node))  # type: ignore[call-overload]
+    graph.add_node("final_response", observe_node("final_response", final_response_node))  # type: ignore[call-overload]
+    graph.add_node("knowledge_update", observe_node("knowledge_update", knowledge_update_node))  # type: ignore[call-overload]
 
     graph.add_edge(START, "router")
     graph.add_conditional_edges(
@@ -138,7 +140,7 @@ def build_workflow() -> StateGraph:
     return graph
 
 
-def compile_workflow(checkpointer: Any | None = None) -> CompiledStateGraph:
+def compile_workflow(checkpointer: Any | None = None) -> CompiledStateGraph:  # type: ignore[type-arg]
     """Compile the graph with an optional PostgreSQL checkpoint backend.
 
     interrupt_before=["human_approval"] causes LangGraph to persist state and
