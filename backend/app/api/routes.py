@@ -23,7 +23,7 @@ POST /api/v1/workflow/{session_id}/approve
 import asyncio
 import uuid
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Literal, cast
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
@@ -234,7 +234,7 @@ async def get_workflow_result(
             completeness=JudgeDimensionScore(**jd["completeness"]),
             coherence=JudgeDimensionScore(**jd["coherence"]),
             overall_score=float(jd["overall_score"]),
-            recommendation=jd["recommendation"],
+            recommendation=cast(Literal["auto_approve", "needs_review"], jd["recommendation"]),
             critique=jd.get("critique", ""),
             evaluated_at=jd.get("evaluated_at", ""),
         )
@@ -242,6 +242,8 @@ async def get_workflow_result(
     api_metrics: WorkflowMetrics | None = None
     md = final.get("metrics")
     if md:
+        _hr = md.get("hallucination_rate")
+        _js = md.get("judge_score")
         api_metrics = WorkflowMetrics(
             started_at=md.get("started_at", ""),
             completed_at=md.get("completed_at", ""),
@@ -249,10 +251,8 @@ async def get_workflow_result(
             total_tokens=int(md.get("total_tokens", 0)),
             error_count=int(md.get("error_count", 0)),
             error_rate=float(md.get("error_rate", 0.0)),
-            hallucination_rate=float(md["hallucination_rate"])
-            if md.get("hallucination_rate") is not None
-            else None,
-            judge_score=float(md["judge_score"]) if md.get("judge_score") is not None else None,
+            hallucination_rate=float(_hr) if _hr is not None else None,
+            judge_score=float(_js) if _js is not None else None,
             step_count=int(md.get("step_count", 0)),
         )
 
