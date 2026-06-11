@@ -261,6 +261,16 @@ Fetches up to 5 DuckDuckGo results for the original query using `ddgs` (via `asy
 
 This node runs before the `interrupt_before` pause so results are already in the checkpoint when the reviewer opens the approval panel — no extra round-trip needed.
 
+**Why a deterministic workflow node instead of tool calling or an MCP server:**
+
+The web search could have been implemented as an LLM tool call (giving the model the ability to decide when and what to search) or exposed as an MCP server (externalising the capability entirely). Instead it is a fixed node in the LangGraph state machine — it always runs, always uses the original query, and always runs before the human approval pause.
+
+This is the right choice here for three reasons:
+
+1. **Predictability.** The search happens unconditionally whenever the confidence gate fails. There is no LLM deciding whether to invoke it, with what query, or how many times. The reviewer always sees web results, never sometimes.
+2. **Context is for the human, not the LLM.** The search results are not fed back to the generator to improve the answer — they are surfaced directly to the reviewer so they can validate the AI's output against live information. Tool calling is designed for LLM consumption; a deterministic node is designed for workflow control.
+3. **No token overhead or latency on the happy path.** Tool calling requires the LLM to emit a tool-call token sequence and then process the results in a second pass. Since web search only runs on the manual-review branch (low-confidence queries), making it a node means the auto-approval path pays zero cost for it.
+
 ---
 
 ### 12. Human Approval *(manual path only)*
