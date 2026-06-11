@@ -46,6 +46,7 @@ from app.schemas.responses import (
     JudgeDimensionScore,
     JudgeResult,
     WebSearchResult,
+    WorkflowMetrics,
     WorkflowResponse,
     WorkflowStatusResponse,
 )
@@ -238,6 +239,23 @@ async def get_workflow_result(
             evaluated_at=jd.get("evaluated_at", ""),
         )
 
+    api_metrics: WorkflowMetrics | None = None
+    md = final.get("metrics")
+    if md:
+        api_metrics = WorkflowMetrics(
+            started_at=md.get("started_at", ""),
+            completed_at=md.get("completed_at", ""),
+            latency_ms=float(md.get("latency_ms", 0.0)),
+            total_tokens=int(md.get("total_tokens", 0)),
+            error_count=int(md.get("error_count", 0)),
+            error_rate=float(md.get("error_rate", 0.0)),
+            hallucination_rate=float(md["hallucination_rate"])
+            if md.get("hallucination_rate") is not None
+            else None,
+            judge_score=float(md["judge_score"]) if md.get("judge_score") is not None else None,
+            step_count=int(md.get("step_count", 0)),
+        )
+
     return WorkflowResponse(
         session_id=final["session_id"],
         summary=final["summary"],
@@ -252,6 +270,7 @@ async def get_workflow_result(
         confidence=api_confidence,
         groundedness=api_groundedness,
         judge_result=api_judge,
+        metrics=api_metrics,
     )
 
 

@@ -4,6 +4,7 @@ from app.agents.router import RouterAgent
 from app.core.exceptions import LLMError
 from app.core.logging import get_logger
 from app.graph.state import AppState, make_error
+from app.observability.token_tracker import TokenCounterCallback, instrumented_llm
 
 _logger = get_logger(__name__)
 
@@ -28,7 +29,8 @@ async def router_node(state: AppState) -> dict[str, Any]:
     step = state.get("step_count", 0) + 1
 
     try:
-        agent = RouterAgent()
+        counter = TokenCounterCallback()
+        agent = RouterAgent(llm=instrumented_llm(counter))
         result = await agent.classify(state["query"])
     except LLMError as exc:
         _logger.error(
@@ -64,4 +66,5 @@ async def router_node(state: AppState) -> dict[str, Any]:
         "router_confidence": result.confidence,
         "current_node": _NODE,
         "step_count": step,
+        "total_tokens": counter.total,
     }
