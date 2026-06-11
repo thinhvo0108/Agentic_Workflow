@@ -420,6 +420,95 @@ The result is a feedback loop: the more queries get approved, the more the knowl
 
 ---
 
+## Observability and LLM Evaluation
+
+### What this project measures
+
+The project exposes two distinct layers of metrics.
+
+**Operational metrics** (Prometheus + OpenTelemetry) tell you whether the *system* is healthy:
+
+| Metric | Where |
+|---|---|
+| Request latency per node (p50/p95/p99) | Prometheus histogram, `/metrics` endpoint |
+| Token usage per node and per request | `token_tracker.py`, surfaced in `WorkflowMetrics` |
+| Error rate per node | `errors` reducer in `AppState`, Prometheus counter |
+| OTel trace per request with span-per-node | OTLP/gRPC export, visible in any OTel-compatible backend |
+
+These answer *"is the pipeline running correctly and within SLA?"* — not *"is the answer good?"*
+
+**Quality signals** (computed per response, shown on the frontend) tell you whether the *output* is trustworthy:
+
+| Signal | How it is computed |
+|---|---|
+| Confidence score | Weighted composite of routing, retrieval, and answer confidence |
+| Groundedness / hallucination rate | Claim-level: each factual claim labelled supported/unsupported against source docs |
+| LLM judge score | 4-dimension holistic score: faithfulness (40 %), relevance (30 %), completeness (20 %), coherence (10 %) |
+| Human approval rate | Implicit — logged on every approve/reject decision via the HITL node |
+
+---
+
+### Proper LLM evaluation approaches
+
+The quality signals above are a solid start, but evaluating an LLM rigorously — especially a fine-tuned one — requires a wider toolkit.
+
+#### 1. RAG-specific evaluation (RAGAS framework)
+
+This project implements two of the four RAGAS pillars:
+
+| Pillar | Measures | In this project |
+|---|---|---|
+| **Faithfulness** | Answer is grounded in retrieved context | ✓ groundedness node |
+| **Answer Relevancy** | Answer addresses the question | ✓ judge relevance dimension |
+| **Context Precision** | Retrieved chunks are on-topic | ✗ not yet |
+| **Context Recall** | Retrieval captured all necessary info | ✗ not yet |
+
+[RAGAS](https://github.com/explodinggradients/ragas) can compute all four automatically from `(question, answer, contexts, ground_truth)` tuples — the same data already available in `AppState`.
+
+#### 2. LLM-as-a-Judge
+
+The judge pattern used here is already a best-practice approach. Variants beyond this:
+
+- **G-Eval** — uses chain-of-thought reasoning before scoring, tends to be better calibrated
+- **MT-Bench** — multi-turn conversation quality benchmark
+- **Chatbot Arena / ELO ranking** — pairwise human preference ranking; the gold standard for comparing two models or two prompt versions head-to-head
+
+#### 3. Benchmark-based evaluation (for base or fine-tuned models)
+
+Standard benchmarks evaluate the underlying model, not the pipeline built on top of it. Run these before and after fine-tuning to measure both improvement on the target task and any regression on general capability:
+
+| Benchmark | What it tests |
+|---|---|
+| **MMLU** | Broad knowledge across 57 subjects |
+| **TruthfulQA** | Resistance to hallucination on known tricky questions |
+| **HellaSwag** | Commonsense reasoning |
+| **GSM8K** | Math reasoning and multi-step chains |
+| **HumanEval** | Code generation correctness |
+| **BIG-Bench Hard** | Hard reasoning tasks that defeat most heuristics |
+
+#### 4. Fine-tuned LLM evaluation specifically
+
+When fine-tuning a model (SFT, LoRA, RLHF/DPO), the standard checklist is:
+
+1. **Held-out test set with ground truth** — the most important signal. Split labelled data *before* training. After fine-tuning, compute task-specific metrics (F1 for classification, BLEU/ROUGE or LLM-judge score for generation, exact match for extraction).
+2. **Delta vs. base model** — run the same eval on base and fine-tuned side-by-side. The delta is the actual gain from fine-tuning.
+3. **Regression on general benchmarks** — fine-tuning on narrow data often hurts general reasoning. A drop on MMLU after a small domain fine-tune is a red flag for catastrophic forgetting.
+4. **Reward model score** (for RLHF / DPO) — if preference data was used, the reward model itself is an evaluator.
+5. **Human eval on edge cases** — automated metrics miss subtleties. A panel of 50–100 human-judged examples on hard or adversarial inputs is often more trustworthy than any automated score.
+
+#### 5. What is missing from this project for a complete eval story
+
+| Gap | How to close it |
+|---|---|
+| No ground truth labels | Add a `ground_truth` field to test queries; compute BERTScore or exact-match against it |
+| Missing RAGAS pillars | Integrate RAGAS — it reuses `(query, answer, contexts)` already in `AppState` |
+| No offline eval harness | A pytest fixture that runs N seed queries and asserts `judge_score ≥ threshold` across the batch |
+| No longitudinal tracking | Log per-query scores to PostgreSQL and plot approval rate over time as the knowledge base grows |
+
+> **Note:** the human-in-the-loop approval in this project is itself a form of human evaluation. Every approve/reject decision is a labelled quality signal. The knowledge base feedback loop means that human approval rate naturally improves over time — making it a live, self-improving eval metric that most demo projects lack entirely.
+
+---
+
 ## Multi-Tenancy
 
 ### Problem
