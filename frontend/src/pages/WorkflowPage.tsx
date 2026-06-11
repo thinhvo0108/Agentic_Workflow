@@ -14,13 +14,13 @@ import {
   Flex,
   Grid,
   HStack,
-  Icon,
   Skeleton,
   Spinner,
   Text,
   VStack,
 } from '@chakra-ui/react';
-import { ArrowBackIcon, SearchIcon, WarningTwoIcon } from '@chakra-ui/icons';
+import { ArrowBackIcon, WarningTwoIcon } from '@chakra-ui/icons';
+import BotIcon from '../components/BotIcon';
 import { keyframes } from '@emotion/react';
 import WorkflowStepper from '../components/WorkflowStepper';
 import ApprovalPanel from '../components/ApprovalPanel';
@@ -91,8 +91,15 @@ export default function WorkflowPage() {
       {/* Header */}
       <Box bg="brand.600" py={4} px={6} shadow="md">
         <HStack justify="space-between">
-          <HStack spacing={3}>
-            <Icon as={SearchIcon} color="white" boxSize={5} />
+          <HStack
+            as={RouterLink}
+            to="/"
+            spacing={3}
+            _hover={{ opacity: 0.85 }}
+            cursor="pointer"
+            textDecoration="none"
+          >
+            <BotIcon color="white" boxSize={5} />
             <Text fontWeight="bold" fontSize="lg" color="white" letterSpacing="tight">
               Agentic Workflow
             </Text>

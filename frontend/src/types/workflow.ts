@@ -61,6 +61,7 @@ export interface DraftResponse {
   citations: Citation[];
   confidence: ConfidenceScores | null;
   groundedness: GroundednessResult | null;
+  judge_result: JudgeResult | null;
   web_search_results: WebSearchResult[];
 }
 

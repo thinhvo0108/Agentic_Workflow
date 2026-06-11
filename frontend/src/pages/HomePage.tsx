@@ -11,11 +11,10 @@ import {
   Flex,
   Grid,
   HStack,
-  Icon,
   Text,
   VStack,
 } from '@chakra-ui/react';
-import { SearchIcon } from '@chakra-ui/icons';
+import BotIcon from '../components/BotIcon';
 import QueryForm from '../components/QueryForm';
 import { submitWorkflow } from '../api/workflow';
 
@@ -48,7 +47,7 @@ export default function HomePage() {
       {/* Header */}
       <Box bg="brand.600" py={4} px={6} shadow="md">
         <HStack spacing={3}>
-          <Icon as={SearchIcon} color="white" boxSize={5} />
+          <BotIcon color="white" boxSize={5} />
           <Text fontWeight="bold" fontSize="lg" color="white" letterSpacing="tight">
             Agentic Workflow
           </Text>
