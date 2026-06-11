@@ -15,9 +15,10 @@ venv/
 env/
 
 # Environment
-.env
 .env.*
 !.env.example
+# NOTE: .env is intentionally tracked — non-sensitive defaults for quick start.
+# !.env
 
 # Testing
 .pytest_cache/
