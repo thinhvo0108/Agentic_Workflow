@@ -886,3 +886,77 @@ Three GitHub Actions pipelines run on every push:
 | `backend.yml` | `backend/**` changes | ruff lint → mypy type-check → pytest (unit, with Codecov) |
 | `frontend.yml` | `frontend/**` changes | tsc type-check → vite build (artifact uploaded) |
 | `docker.yml` | any push | build both Docker images; push to GHCR only on `main` |
+
+---
+
+## Roadmap
+
+### Next: Fine-Tuned Local LLM
+
+The current pipeline uses `llama3.2:latest` as a general-purpose base model for every node — routing, generation, groundedness, and judging. The natural next step is replacing (or augmenting) this with a domain-specific fine-tuned model that stays fully local via Ollama.
+
+**Why this matters for this pipeline specifically:**
+
+The router node is the highest-leverage target. A fine-tuned router can be a small, fast model (e.g., Llama 3.2 1B or Phi-3 mini) trained on labelled `{query → research | support}` examples. This removes the latency cost of running a 3B+ model for a binary classification that a 1B model can do in milliseconds with higher accuracy.
+
+The generator and judge nodes are secondary targets. A fine-tuned generator trained on `{query, context → structured answer}` pairs from the knowledge base produces more consistent citation formats and fewer hallucinated claims, directly improving the groundedness and judge scores — and therefore the auto-approval rate.
+
+**Implementation plan (stays fully local):**
+
+1. **Collect training data** — use the `human_approval` decisions already logged to PostgreSQL. Every manually approved Q&A pair is a labelled example. After enough approvals accumulate, export via `GET /api/v1/workflow` records filtered by `approval_status = approved`.
+
+2. **Fine-tune with Unsloth or llama.cpp** — both support LoRA fine-tuning on commodity hardware (16 GB VRAM or CPU offload). Export to GGUF format.
+
+3. **Register in Ollama** — `ollama create my-router-v1 -f Modelfile`. The Modelfile points at the GGUF and sets the system prompt.
+
+4. **Swap in via config** — `OLLAMA_DEFAULT_MODEL` in `docker-compose.yml` or a per-node override in `core/config.py`. No graph code changes required.
+
+5. **Measure impact** — re-run the offline eval harness (`scripts/run_eval.py`) and compare `auto_approval_rate`, `mean_judge_score`, and `mean_answer_similarity` against the baseline run.
+
+---
+
+## Design Trade-offs
+
+An honest assessment of what was optimised for and what was deliberately left out.
+
+### What this architecture does well
+
+**Correctness over throughput.** Every node either produces a verifiable output (structured Pydantic schema) or appends to `state["errors"]` and continues. The pipeline never silently swallows failures — every error is captured, traced via OTel, and surfaced in the final response. This is the right default for a quality-gated workflow.
+
+**Durable human-in-the-loop.** LangGraph's `interrupt_before` + PostgreSQL checkpointing means the workflow survives a process restart between the pause and the resume. Most demo HITL implementations block a thread or use an in-memory queue — both silently lose state on crash. This one doesn't.
+
+**Self-improving knowledge base.** Manually approved answers are re-ingested into the agent's collection, so the auto-approval rate improves over time without any model retraining. This is a genuine feedback loop that most RAG demos skip entirely.
+
+**Observable by default.** Every node is wrapped in `observe_node()`, which emits an OTel span with the node name, duration, and error flag. You get a distributed trace of the full pipeline without any per-node instrumentation boilerplate. Adding a new node automatically inherits tracing.
+
+**Clean separation between graph state and API schemas.** `AppState` is a flat `TypedDict` (required by LangGraph's checkpointing) while API responses are Pydantic models. The boundary is explicit — `routes.py` maps between them. This prevents Pydantic validation logic from leaking into graph nodes, and TypedDict incompatibilities from leaking into the API layer.
+
+---
+
+### Real costs and limitations
+
+**Latency is high for a demo workload.** Running 10+ LLM calls in sequence on a single Ollama instance with a 3B model takes 30–180 seconds per query. The architecture is correct but the hardware assumption is a local dev machine, not an inference cluster. In production you'd parallelize independent nodes (groundedness + judge can run concurrently after generation), use a faster model for low-stakes nodes (router, structured output), and batch embed calls. None of that is wired here.
+
+**CrossEncoder reranker loads on every worker start.** `BAAI/bge-reranker-large` (~1.1 GB) is loaded into memory when the backend starts. With a single worker this is fine. With multiple Uvicorn workers (`--workers 4`) you'd load 4 copies. The fix is to host the reranker as a separate sidecar service with a simple HTTP interface — straightforward but not implemented.
+
+**ChromaDB is single-node with no persistence guarantee under load.** The current setup uses the ChromaDB HTTP server with a local volume. It has no replication, no WAL-level durability, and no horizontal scaling. For a production multi-tenant deployment you'd replace it with a managed vector store (Qdrant, Weaviate, or pgvector in the existing Postgres instance) with proper backup policies.
+
+**The LLM judge scores its own model's output.** The judge node uses the same `llama3.2:latest` that generated the answer. This creates a self-grading problem — the same model that produced a hallucination is unlikely to consistently catch it. A proper judge setup uses a separate, stronger model (GPT-4o, Claude 3.5 Sonnet, or a dedicated judge fine-tune). For a local-only stack the options are limited, but even routing the judge to a different Ollama model (e.g., a larger quantisation) would reduce the correlation.
+
+**No streaming.** The API returns the full response only after the entire pipeline completes. Frontend polling at 1.5s intervals is a workaround for the lack of SSE or WebSocket streaming. In practice this means the user stares at a spinner for 30–180 seconds. Streaming partial node outputs (structured output → groundedness → judge) via SSE would dramatically improve perceived latency without changing the pipeline logic.
+
+**Token budgeting is tracked but not enforced.** `token_tracker.py` accumulates usage per node and reports it in `WorkflowMetrics`. But there is no circuit breaker that aborts the pipeline if total tokens exceed a threshold. On a slow Ollama instance with a large prompt this can quietly run for minutes with no upper bound.
+
+**Single-process async — no task queue.** Workflow runs block an asyncio event loop worker. Under concurrent load (multiple simultaneous queries), later requests queue behind earlier ones waiting for Ollama. A real production deployment would put workflow execution behind a task queue (Celery + Redis, or Temporal) and let the API tier return a 202 immediately, decoupling request handling from LLM execution time.
+
+**Knowledge update runs synchronously in the graph.** `knowledge_update_node` calls ChromaDB inside the LangGraph execution path, adding its latency to the final response time. Since ingestion is not on the critical path for the user (the answer is already approved), it should be fire-and-forget — dispatched to a background task after the response is sent.
+
+---
+
+### Choices that look like limitations but are deliberate
+
+**No streaming LLM calls inside nodes.** Each node calls the LLM and waits for the full response before writing to state. This is required by LangGraph's node contract: a node must return a complete state delta. Streaming would require restructuring nodes as generators, which breaks the checkpoint-resume contract. The trade-off is correct given the architecture.
+
+**`AppState` is a flat TypedDict, not nested Pydantic models.** LangGraph serialises state to JSON for PostgreSQL checkpointing. Pydantic models are not directly JSON-serialisable in all cases, and nested TypedDicts are. This forces some verbosity but is the right call for checkpoint durability.
+
+**No async ChromaDB client.** The Python ChromaDB client does not expose an async interface. Calls are wrapped in `asyncio.get_event_loop().run_in_executor(None, ...)` to avoid blocking the event loop. This adds minor overhead but is the correct pattern — not a design gap.
