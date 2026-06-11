@@ -89,6 +89,10 @@ export default function ApprovalPanel({ sessionId, query, onDecision }: Props) {
 
   const route        = draft ? (ROUTE_LABELS[draft.route] ?? { label: draft.route, color: 'gray' }) : null;
   const overallScore = draft?.confidence?.overall ?? null;
+  const judgeScore   = draft?.judge_result?.overall_score ?? null;
+  const THRESHOLD    = 0.70;
+  const confidenceFailed = overallScore !== null && overallScore < THRESHOLD;
+  const judgeFailed      = judgeScore   !== null && judgeScore   < THRESHOLD;
 
   return (
     <VStack align="stretch" spacing={5}>
@@ -118,19 +122,37 @@ export default function ApprovalPanel({ sessionId, query, onDecision }: Props) {
             <Text fontSize="xs" fontWeight="bold" color="orange.700">
               Manual review required
             </Text>
-            {overallScore !== null ? (
+            {draft ? (
               <Text fontSize="xs" color="orange.600" lineHeight="tall">
-                Overall confidence{' '}
-                <Text as="span" fontWeight="bold" color="orange.700">
-                  {Math.round(overallScore * 100)}%
-                </Text>
-                {' '}is below the{' '}
-                <Text as="span" fontWeight="bold">70%</Text>
-                {' '}auto-approval threshold. Please review the response carefully before deciding.
+                {confidenceFailed && judgeFailed ? (
+                  <>
+                    Confidence{' '}
+                    <Text as="span" fontWeight="bold" color="orange.700">{Math.round(overallScore! * 100)}%</Text>
+                    {' '}and judge score{' '}
+                    <Text as="span" fontWeight="bold" color="orange.700">{Math.round(judgeScore! * 100)}%</Text>
+                    {' '}are both below the <Text as="span" fontWeight="bold">70%</Text> threshold.
+                  </>
+                ) : judgeFailed ? (
+                  <>
+                    Confidence is sufficient{overallScore !== null ? <>{' '}(<Text as="span" fontWeight="bold" color="orange.700">{Math.round(overallScore * 100)}%</Text>)</> : null}
+                    {' '}but the LLM judge score{' '}
+                    <Text as="span" fontWeight="bold" color="orange.700">{Math.round(judgeScore! * 100)}%</Text>
+                    {' '}is below the <Text as="span" fontWeight="bold">70%</Text> quality threshold.
+                  </>
+                ) : confidenceFailed ? (
+                  <>
+                    Overall confidence{' '}
+                    <Text as="span" fontWeight="bold" color="orange.700">{Math.round(overallScore! * 100)}%</Text>
+                    {' '}is below the <Text as="span" fontWeight="bold">70%</Text> auto-approval threshold.
+                  </>
+                ) : (
+                  <>One or more quality signals did not meet the auto-approval threshold.</>
+                )}
+                {' '}Please review carefully before deciding.
               </Text>
             ) : (
               <Text fontSize="xs" color="orange.600">
-                Confidence score is below the 70% auto-approval threshold. Loading details…
+                Evaluating quality signals… Loading details.
               </Text>
             )}
           </VStack>
