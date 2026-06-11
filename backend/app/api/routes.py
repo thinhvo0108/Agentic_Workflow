@@ -247,12 +247,10 @@ async def get_workflow_result(
         api_context_precision = ContextPrecisionResult(
             context_precision_score=float(cp_data.get("context_precision_score", 0.0)),
             relevant_documents=[
-                DocumentRelevanceVerdict(**v)
-                for v in (cp_data.get("relevant_documents") or [])
+                DocumentRelevanceVerdict(**v) for v in (cp_data.get("relevant_documents") or [])
             ],
             irrelevant_documents=[
-                DocumentRelevanceVerdict(**v)
-                for v in (cp_data.get("irrelevant_documents") or [])
+                DocumentRelevanceVerdict(**v) for v in (cp_data.get("irrelevant_documents") or [])
             ],
             evaluated_at=cp_data.get("evaluated_at", ""),
         )
@@ -405,12 +403,10 @@ async def get_workflow_draft(
         draft_cp = ContextPrecisionResult(
             context_precision_score=float(cp_state.get("context_precision_score", 0.0)),
             relevant_documents=[
-                DocumentRelevanceVerdict(**v)
-                for v in (cp_state.get("relevant_documents") or [])
+                DocumentRelevanceVerdict(**v) for v in (cp_state.get("relevant_documents") or [])
             ],
             irrelevant_documents=[
-                DocumentRelevanceVerdict(**v)
-                for v in (cp_state.get("irrelevant_documents") or [])
+                DocumentRelevanceVerdict(**v) for v in (cp_state.get("irrelevant_documents") or [])
             ],
             evaluated_at=cp_state.get("evaluated_at", ""),
         )
